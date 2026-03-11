@@ -1,0 +1,15 @@
+{
+  "name": "ecomind-app",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/mobile",
+    "apps/backend"
+  ],
+  "scripts": {
+    "dev:backend": "npm --workspace apps/backend run dev",
+    "dev:mobile": "npm --workspace apps/mobile run start",
+    "start:backend": "npm --workspace apps/backend run start",
+    "seed": "npm --workspace apps/backend run seed"
+  }
+}

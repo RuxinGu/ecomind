@@ -1,0 +1,17 @@
+version: '3.9'
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ecomind-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ecomind
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - '5432:5432'
+    volumes:
+      - soul_mirror_pg_data:/var/lib/postgresql/data
+
+volumes:
+  soul_mirror_pg_data:
