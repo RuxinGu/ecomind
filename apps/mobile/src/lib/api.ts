@@ -3,7 +3,7 @@ import Constants from 'expo-constants';
 
 const defaultBaseUrl =
   Platform.OS === 'android' ? 'http://10.0.2.2:4000' : 'http://localhost:4000';
-const defaultProdBaseUrl = 'https://ecomind-api.onrender.com';
+const defaultProdBaseUrls = ['https://ecomind-2.onrender.com', 'https://ecomind-api.onrender.com'];
 
 function resolveExpoHostBaseUrl() {
   const expoHostUri =
@@ -42,10 +42,10 @@ function getCandidateBaseUrls() {
   const production = !__DEV__;
   const candidates: string[] = [];
   const envUrl = normalizeBase(process.env.EXPO_PUBLIC_API_URL);
-  const prodFallback = normalizeBase(defaultProdBaseUrl);
+  const prodFallbacks = defaultProdBaseUrls.map((url) => normalizeBase(url)).filter(Boolean) as string[];
 
   if (production) {
-    for (const candidate of [envUrl, prodFallback]) {
+    for (const candidate of [envUrl, ...prodFallbacks]) {
       if (!candidate) continue;
       if (!candidate.startsWith('https://')) continue;
       if (isPrivateOrLocalUrl(candidate)) continue;
@@ -86,25 +86,33 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const candidates = getCandidateBaseUrls();
   let response: Response | null = null;
-  let lastNetworkError: Error | null = null;
+  const attemptsPerBase = __DEV__ ? 1 : 3;
+  const timeoutMs = __DEV__ ? 9000 : 35000;
 
   for (const baseUrl of candidates) {
-    const timeout = withTimeout(9000);
-    try {
-      response = await fetch(`${baseUrl}${path}`, {
-        ...options,
-        signal: timeout.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          ...(options.headers || {})
+    for (let attempt = 1; attempt <= attemptsPerBase; attempt += 1) {
+      const timeout = withTimeout(timeoutMs);
+      try {
+        response = await fetch(`${baseUrl}${path}`, {
+          ...options,
+          signal: timeout.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...(options.headers || {})
+          }
+        });
+        timeout.clear();
+        break;
+      } catch (_e) {
+        timeout.clear();
+        if (attempt < attemptsPerBase) {
+          await new Promise((resolve) => setTimeout(resolve, 1200));
         }
-      });
-      timeout.clear();
+      }
+    }
+    if (response) {
       break;
-    } catch (e) {
-      timeout.clear();
-      lastNetworkError = e instanceof Error ? e : new Error('Network request failed');
     }
   }
 

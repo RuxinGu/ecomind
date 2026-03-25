@@ -8,19 +8,19 @@ import { ChatScreen } from './src/screens/ChatScreen';
 import { CommunityChatScreen } from './src/screens/CommunityChatScreen';
 import { LegalScreen } from './src/screens/LegalScreen';
 import { PrivateProfileScreen } from './src/screens/PrivateProfileScreen';
-import { PremiumScreen } from './src/screens/PremiumScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { ResultsScreen } from './src/screens/ResultsScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { TestScreen } from './src/screens/TestScreen';
+import { TermsConsentScreen } from './src/screens/TermsConsentScreen';
 import type { Match } from './src/lib/types';
 import { WelcomeScreen } from './src/screens/WelcomeScreen';
 import { colors } from './src/theme';
 
 function Shell() {
-  const { loading, token, profileComplete, privateProfileComplete, scores, refreshMe } = useAuth();
+  const { loading, token, profileComplete, privateProfileComplete, termsAccepted, scores, refreshMe } = useAuth();
   const [hasStarted, setHasStarted] = useState(false);
-  const [view, setView] = useState<'auto' | 'home' | 'test' | 'results' | 'chat' | 'community' | 'settings' | 'legal' | 'premium' | 'account'>('auto');
+  const [view, setView] = useState<'auto' | 'home' | 'test' | 'results' | 'chat' | 'community' | 'settings' | 'legal' | 'account'>('auto');
   const [homeTab, setHomeTab] = useState<'matches' | 'chats'>('matches');
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [chatStarter, setChatStarter] = useState<string | null>(null);
@@ -54,6 +54,10 @@ function Shell() {
     return <PrivateProfileScreen />;
   }
 
+  if (!termsAccepted) {
+    return <TermsConsentScreen />;
+  }
+
   if (view === 'test') {
     return <TestScreen onSubmitted={() => setView('home')} />;
   }
@@ -77,7 +81,6 @@ function Shell() {
     return (
       <SettingsScreen
         onOpenLegal={() => setView('legal')}
-        onOpenPremium={() => setView('premium')}
         onBack={() => setView('home')}
       />
     );
@@ -85,10 +88,6 @@ function Shell() {
 
   if (view === 'legal') {
     return <LegalScreen onBack={() => setView('settings')} />;
-  }
-
-  if (view === 'premium') {
-    return <PremiumScreen onBack={() => setView('home')} />;
   }
 
   if (view === 'community') {
@@ -130,7 +129,6 @@ function Shell() {
         }}
         onRetake={() => setView('test')}
         onOpenSettings={() => setView('settings')}
-        onOpenPremium={() => setView('premium')}
         onOpenCommunity={() => setView('community')}
         onOpenAccount={() => setView('account')}
       />

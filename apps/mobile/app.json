@@ -11,7 +11,9 @@
       "icon": "./assets/icon.png",
       "bundleIdentifier": "com.ecomind.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSPhotoLibraryUsageDescription": "EcoMind needs access to your photo library so you can upload profile and chat photos.",
+        "NSPhotoLibraryAddUsageDescription": "EcoMind may save images you choose to share in chats."
       }
     },
     "android": {
@@ -21,6 +23,14 @@
       "eas": {
         "projectId": "d5ab4116-41a1-48be-a076-90a8d781e725"
       }
-    }
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "EcoMind needs access to your photos so you can upload profile and chat pictures."
+        }
+      ]
+    ]
   }
 }

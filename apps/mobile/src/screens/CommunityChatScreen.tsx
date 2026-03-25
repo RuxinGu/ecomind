@@ -117,6 +117,55 @@ export function CommunityChatScreen({
     }
   };
 
+  const reportMessage = async (message: ChatMessage) => {
+    if (!token) return;
+    await apiRequest(
+      '/safety/report',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          targetUserId: message.sender_id,
+          messageId: message.id,
+          reason: 'Community chat guideline violation'
+        })
+      },
+      token
+    );
+    Alert.alert(
+      t('Report submitted', '举报已提交'),
+      t(
+        'We review all reported content within 24 hours and take appropriate action, including removing content and banning users.',
+        '我们会在 24 小时内审核举报并采取相应措施，包括移除内容和封禁违规用户。'
+      )
+    );
+  };
+
+  const blockUser = async (message: ChatMessage) => {
+    if (!token) return;
+    await apiRequest(
+      '/safety/report',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          targetUserId: message.sender_id,
+          messageId: message.id,
+          reason: 'User blocked in community chat for guideline violation'
+        })
+      },
+      token
+    );
+    await apiRequest(
+      '/safety/block',
+      {
+        method: 'POST',
+        body: JSON.stringify({ blockedUserId: message.sender_id })
+      },
+      token
+    );
+    setMessages((prev) => prev.filter((item) => item.sender_id !== message.sender_id));
+    Alert.alert(t('User blocked', '已拉黑用户'), `${message.sender_name}${t(' has been blocked.', ' 已被拉黑。')}`);
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.topBar}>
@@ -144,6 +193,16 @@ export function CommunityChatScreen({
                 <Text style={[styles.sender, mine && styles.mineText]}>{mine ? t('You', '你') : message.sender_name}</Text>
                 {message.text ? <Text style={[styles.text, mine && styles.mineText]}>{message.text}</Text> : null}
                 {message.image_url ? <Image source={{ uri: message.image_url }} style={styles.image} /> : null}
+                {!mine ? (
+                  <View style={styles.actionRow}>
+                    <Pressable onPress={() => reportMessage(message)}>
+                      <Text style={styles.actionText}>{t('Report', '举报')}</Text>
+                    </Pressable>
+                    <Pressable onPress={() => blockUser(message)}>
+                      <Text style={styles.actionText}>{t('Block', '拉黑')}</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
               </View>
             );
           })}
@@ -341,6 +400,16 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '900',
     fontSize: 17
+  },
+  actionRow: {
+    marginTop: 4,
+    flexDirection: 'row',
+    gap: 10
+  },
+  actionText: {
+    color: colors.danger,
+    fontWeight: '700',
+    fontSize: 12
   },
   photoInputRow: {
     marginTop: 8

@@ -78,6 +78,7 @@ const moderationPatterns = [
   { key: 'coercion', re: /\b(send nudes|nudes now|or i leak|blackmail)\b/i },
   { key: 'scam', re: /\b(send money|wire transfer|crypto wallet|investment scheme|gift card code)\b/i }
 ];
+const badWords = ['fuck', 'sex', 'hate', 'kill'];
 
 app.use(globalLimiter);
 
@@ -185,6 +186,11 @@ function parseMatchRoomId(roomId) {
   return { a: Math.min(a, b), b: Math.max(a, b) };
 }
 
+function containsBadWord(text) {
+  const value = String(text || '').toLowerCase();
+  return badWords.some((word) => value.includes(word));
+}
+
 async function auth(req, res, next) {
   try {
     const header = req.headers.authorization || '';
@@ -194,7 +200,7 @@ async function auth(req, res, next) {
     const { rows } = await query(
       `SELECT u.id::int AS id, u.email, u.name, u.age, u.gender, u.preference, u.bio, u.avatar_url, u.default_questions,
               u.private_profile_completed, u.private_email, u.private_phone, u.private_location, u.private_notes,
-              u.is_premium, u.premium_until, u.connect_contacts_enabled, u.preferred_language, u.community_label,
+              u.is_premium, u.premium_until, u.connect_contacts_enabled, u.preferred_language, u.community_label, u.terms_accepted_at,
               u.is_permanently_blocked, u.permanent_block_reason, u.permanently_blocked_at, u.created_at
        FROM sessions s
        JOIN users u ON u.id = s.user_id
@@ -217,6 +223,14 @@ async function auth(req, res, next) {
   }
 }
 
+function requireModerationAuth(req, res, next) {
+  const moderationToken = String(process.env.MODERATION_TOKEN || '').trim();
+  if (!moderationToken) return res.status(503).json({ error: 'Moderation API is not configured' });
+  const token = String(req.headers['x-moderation-token'] || '').trim();
+  if (!token || token !== moderationToken) return res.status(401).json({ error: 'Invalid moderation token' });
+  return next();
+}
+
 app.get('/health', (_req, res) => {
   res.json({ ok: true, env: process.env.NODE_ENV || 'development' });
 });
@@ -234,9 +248,13 @@ app.post('/auth/signup', authLimiter, signupLimiter, async (req, res, next) => {
     const email = normalizeEmail(req.body.email);
     const password = String(req.body.password || '');
     const name = String(req.body.name || '').trim();
+    const termsAccepted = req.body.termsAccepted === true;
 
     if (!email || !password || !name) {
       return res.status(400).json({ error: 'Email, password, and name are required' });
+    }
+    if (!termsAccepted) {
+      return res.status(400).json({ error: 'You must agree to Terms & Community Guidelines to create an account.' });
     }
     if (password.length < 8) {
       return res.status(400).json({ error: 'Password must be at least 8 characters' });
@@ -245,8 +263,8 @@ app.post('/auth/signup', authLimiter, signupLimiter, async (req, res, next) => {
     const passwordHash = await bcrypt.hash(password, bcryptRounds);
 
     const inserted = await query(
-      `INSERT INTO users (email, password_hash, name, created_at)
-       VALUES ($1, $2, $3, NOW())
+      `INSERT INTO users (email, password_hash, name, terms_accepted_at, created_at)
+       VALUES ($1, $2, $3, NOW(), NOW())
        ON CONFLICT(email) DO NOTHING
        RETURNING id::int AS id`,
       [email, passwordHash, name]
@@ -342,6 +360,7 @@ app.get('/me', auth, async (req, res, next) => {
         premiumUntil: req.user.premium_until
       },
       connectContactsEnabled: toBool(req.user.connect_contacts_enabled),
+      termsAccepted: Boolean(req.user.terms_accepted_at),
       preferredLanguage: req.user.preferred_language || null,
       communityLabel: req.user.community_label || null,
       communityPrompt:
@@ -353,6 +372,15 @@ app.get('/me', auth, async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+});
+
+app.post('/compliance/accept-terms', auth, async (req, res, next) => {
+  try {
+    await query('UPDATE users SET terms_accepted_at = COALESCE(terms_accepted_at, NOW()) WHERE id = $1', [req.user.id]);
+    return res.json({ ok: true, termsAccepted: true });
+  } catch (error) {
+    return next(error);
   }
 });
 
@@ -660,6 +688,11 @@ app.post('/community/messages', auth, async (req, res, next) => {
     const text = String(req.body.text || '').trim();
     const imageUrl = String(req.body.imageUrl || '').trim();
     if (!text && !imageUrl) return res.status(400).json({ error: 'Message must include text or image' });
+    if (text && containsBadWord(text)) {
+      return res.status(400).json({
+        error: 'Message violates community guidelines. Please remove abusive, explicit, or hateful words.'
+      });
+    }
     if (text.length > 1000) return res.status(400).json({ error: 'Message too long' });
     if (imageUrl.length > 6_000_000) return res.status(400).json({ error: 'Image payload is too large' });
 
@@ -1146,6 +1179,11 @@ app.post('/chat/messages', auth, async (req, res, next) => {
     if (!text && !imageUrl) {
       return res.status(400).json({ error: 'Message must include text or image' });
     }
+    if (text && containsBadWord(text)) {
+      return res.status(400).json({
+        error: 'Message violates community guidelines. Please remove abusive, explicit, or hateful words.'
+      });
+    }
     if (text.length > 1000) return res.status(400).json({ error: 'Message is too long' });
     if (imageUrl.length > 6_000_000) return res.status(400).json({ error: 'Image payload is too large' });
 
@@ -1327,6 +1365,15 @@ app.post('/safety/report', auth, async (req, res, next) => {
     if (moderation.shouldBlock && moderation.targetUserId) {
       await applyPermanentBlock(moderation.targetUserId, moderation.reason);
       await query(
+        `UPDATE reports
+         SET status = 'resolved',
+             reviewed_at = NOW(),
+             reviewed_by = 'auto-moderation',
+             resolution = 'remove_and_ban'
+         WHERE id = $1`,
+        [inserted.rows[0].id]
+      );
+      await query(
         `INSERT INTO blocks (blocker_id, blocked_user_id, created_at)
          VALUES ($1, $2, NOW())
          ON CONFLICT(blocker_id, blocked_user_id) DO NOTHING`,
@@ -1345,6 +1392,65 @@ app.post('/safety/report', auth, async (req, res, next) => {
       reportId: inserted.rows[0].id,
       action: 'queued_for_review'
     });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.get('/moderation/reports/pending', requireModerationAuth, async (req, res, next) => {
+  try {
+    const limit = Math.min(200, Math.max(1, safeInt(req.query.limit) || 100));
+    const result = await query(
+      `SELECT r.id::int AS id, r.reason, r.created_at, r.status,
+              r.reporter_id::int AS reporter_id, ru.name AS reporter_name,
+              r.target_user_id::int AS target_user_id, tu.name AS target_name,
+              r.message_id::int AS message_id, m.text AS message_text
+       FROM reports r
+       LEFT JOIN users ru ON ru.id = r.reporter_id
+       LEFT JOIN users tu ON tu.id = r.target_user_id
+       LEFT JOIN messages m ON m.id = r.message_id
+       WHERE r.status = 'pending'
+       ORDER BY r.created_at ASC
+       LIMIT $1`,
+      [limit]
+    );
+    return res.json({ reports: result.rows });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post('/moderation/reports/:reportId/action', requireModerationAuth, async (req, res, next) => {
+  try {
+    const reportId = safeInt(req.params.reportId);
+    const action = String(req.body.action || '').trim();
+    const reviewer = String(req.body.reviewer || 'moderator').trim().slice(0, 120);
+    const resolution = action === 'remove_and_ban' ? 'remove_and_ban' : 'dismissed';
+    if (!reportId) return res.status(400).json({ error: 'Invalid reportId' });
+
+    const report = await query(
+      `SELECT id::int AS id, target_user_id::int AS target_user_id
+       FROM reports
+       WHERE id = $1`,
+      [reportId]
+    );
+    if (!report.rows[0]) return res.status(404).json({ error: 'Report not found' });
+
+    if (resolution === 'remove_and_ban' && report.rows[0].target_user_id) {
+      await applyPermanentBlock(report.rows[0].target_user_id, 'Manual moderation action: remove_and_ban');
+    }
+
+    await query(
+      `UPDATE reports
+       SET status = 'resolved',
+           reviewed_at = NOW(),
+           reviewed_by = $2,
+           resolution = $3
+       WHERE id = $1`,
+      [reportId, reviewer, resolution]
+    );
+
+    return res.json({ ok: true, resolution });
   } catch (error) {
     return next(error);
   }

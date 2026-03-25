@@ -32,22 +32,19 @@ export function ResultsScreen({
   onOpenChat,
   onRetake,
   onOpenSettings,
-  onOpenPremium,
   onOpenCommunity,
   onOpenAccount
 }: {
   onOpenChat: (match: Match, starterQuestion?: string) => void;
   onRetake: () => void;
   onOpenSettings: () => void;
-  onOpenPremium: () => void;
   onOpenCommunity: () => void;
   onOpenAccount: () => void;
 }) {
   const { t } = useL10n();
-  const { token, user, scores, premium, upgradeMonthly, interpretations, connectContactsEnabled } = useAuth();
+  const { token, user, scores, interpretations, connectContactsEnabled } = useAuth();
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
-  const [upgrading, setUpgrading] = useState(false);
   const [expandedDimension, setExpandedDimension] = useState<string | null>(null);
 
   useEffect(() => {
@@ -83,24 +80,8 @@ export function ResultsScreen({
       <View style={styles.hero}>
         <ScreenTitle
           title={t('Your EcoMind', '你的 EcoMind')}
-          subtitle={t('Your resonance map is live. Premium unlocks unlimited chat with everyone.', '你的共鸣画像已生成。高级会员可与所有人无限聊天。')}
+          subtitle={t('Your resonance map is live. Explore your strongest matches below.', '你的共鸣画像已生成。请在下方查看最强共鸣匹配。')}
         />
-        <Pressable
-          style={[styles.upgradeButton, premium.isPremium && styles.upgradeButtonActive]}
-          onPress={async () => {
-            if (premium.isPremium) return;
-            setUpgrading(true);
-            try {
-              await upgradeMonthly();
-            } finally {
-              setUpgrading(false);
-            }
-          }}
-        >
-          <Text style={styles.upgradeButtonText}>
-            {premium.isPremium ? t('Soul Premium Active', '高级会员已开通') : upgrading ? t('Upgrading...', '升级中...') : t('Upgrade $2.89/month', '升级 $2.89/月')}
-          </Text>
-        </Pressable>
       </View>
 
       <Card>
@@ -211,11 +192,7 @@ export function ResultsScreen({
 
       <Card>
         <Text style={styles.heading}>{t('Soul resonance matches', '灵魂共鸣匹配')}</Text>
-        <Text style={styles.helper}>
-          {premium.isPremium
-            ? t('Premium mode: chat is unlocked with everyone, no chat-rate cap.', '高级模式：可与所有人聊天，无消息频率限制。')
-            : t('Free mode: chat unlocks for high-resonance matches.', '免费模式：仅高共鸣匹配可聊天。')}
-        </Text>
+        <Text style={styles.helper}>{t('Chat unlocks for high-resonance matches.', '聊天仅对高共鸣匹配开放。')}</Text>
         {connectContactsEnabled ? (
           <Text style={styles.helper}>{t('Contact discovery is on. Matching contacts are prioritized first.', '已开启通讯录优先匹配。')}</Text>
         ) : null}
@@ -271,7 +248,6 @@ export function ResultsScreen({
       {user?.community_label ? (
         <SecondaryButton label={`${t('Open', '进入')} ${user.community_label}`} onPress={onOpenCommunity} />
       ) : null}
-      <SecondaryButton label={t('Premium', '高级会员')} onPress={onOpenPremium} />
       <SecondaryButton label={t('Settings', '设置')} onPress={onOpenSettings} />
     </ScrollView>
   );
@@ -313,22 +289,6 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 5 },
     elevation: 2
-  },
-  upgradeButton: {
-    marginTop: 12,
-    backgroundColor: colors.warm,
-    borderRadius: 12,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#a3522c'
-  },
-  upgradeButtonActive: {
-    backgroundColor: colors.accentDeep
-  },
-  upgradeButtonText: {
-    color: '#fff',
-    fontWeight: '800'
   },
   heading: {
     fontWeight: '800',

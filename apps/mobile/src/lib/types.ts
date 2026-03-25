@@ -18,6 +18,7 @@ export type User = {
   connect_contacts_enabled?: boolean;
   preferred_language?: string | null;
   community_label?: string | null;
+  terms_accepted_at?: string | null;
 };
 
 export type DimensionScores = Record<string, number | null>;

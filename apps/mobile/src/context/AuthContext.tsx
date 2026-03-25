@@ -9,12 +9,14 @@ type AuthContextValue = {
   user: User | null;
   profileComplete: boolean;
   privateProfileComplete: boolean;
+  termsAccepted: boolean;
   connectContactsEnabled: boolean;
   premium: PremiumStatus;
   scores: Record<string, number | null>;
   interpretations: InterpretationsPayload | null;
   signUp: (payload: { email: string; password: string; name: string }) => Promise<void>;
   login: (payload: { email: string; password: string }) => Promise<void>;
+  acceptTerms: () => Promise<void>;
   logout: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   refreshMe: () => Promise<void>;
@@ -45,12 +47,36 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+async function wait(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withAuthRetry<T>(task: () => Promise<T>) {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      return await task();
+    } catch (error) {
+      lastError = error;
+      const message = error instanceof Error ? error.message : '';
+      const transient =
+        message.includes('Service temporarily unavailable') ||
+        message.includes('Network request failed') ||
+        message.includes('fetch');
+      if (!transient || attempt >= 2) break;
+      await wait(1500);
+    }
+  }
+  throw lastError;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profileComplete, setProfileComplete] = useState(false);
   const [privateProfileComplete, setPrivateProfileComplete] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [connectContactsEnabled, setConnectContactsEnabled] = useState(false);
   const [premium, setPremium] = useState<PremiumStatus>({ isPremium: false, premiumUntil: null });
   const [scores, setScores] = useState<Record<string, number | null>>({});
@@ -62,6 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: User;
       profileComplete: boolean;
       privateProfileComplete: boolean;
+      termsAccepted: boolean;
       premium: PremiumStatus;
       connectContactsEnabled: boolean;
       scores: Record<string, number | null>;
@@ -70,6 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(data.user);
     setProfileComplete(data.profileComplete);
     setPrivateProfileComplete(data.privateProfileComplete);
+    setTermsAccepted(Boolean(data.termsAccepted));
     setConnectContactsEnabled(Boolean(data.connectContactsEnabled));
     setPremium(data.premium || { isPremium: false, premiumUntil: null });
     setScores(data.scores || {});
@@ -86,6 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             user: User;
             profileComplete: boolean;
             privateProfileComplete: boolean;
+            termsAccepted: boolean;
             premium: PremiumStatus;
             connectContactsEnabled: boolean;
             scores: Record<string, number | null>;
@@ -94,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(data.user);
           setProfileComplete(data.profileComplete);
           setPrivateProfileComplete(data.privateProfileComplete);
+          setTermsAccepted(Boolean(data.termsAccepted));
           setConnectContactsEnabled(Boolean(data.connectContactsEnabled));
           setPremium(data.premium || { isPremium: false, premiumUntil: null });
           setScores(data.scores || {});
@@ -108,16 +138,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signUp = async (payload: { email: string; password: string; name: string }) => {
-    const data = await apiRequest<{ token: string }>('/auth/signup', {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    });
+    await withAuthRetry(() => apiRequest('/health'));
+    const data = await withAuthRetry(() =>
+      apiRequest<{ token: string }>('/auth/signup', {
+        method: 'POST',
+        body: JSON.stringify({ ...payload, termsAccepted: true })
+      })
+    );
     await AsyncStorage.setItem('soul_mirror_token', data.token);
     setToken(data.token);
     const me = await apiRequest<{
       user: User;
       profileComplete: boolean;
       privateProfileComplete: boolean;
+      termsAccepted: boolean;
       premium: PremiumStatus;
       connectContactsEnabled: boolean;
       scores: Record<string, number | null>;
@@ -130,6 +164,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(me.user);
     setProfileComplete(me.profileComplete);
     setPrivateProfileComplete(me.privateProfileComplete);
+    setTermsAccepted(Boolean(me.termsAccepted));
     setConnectContactsEnabled(Boolean(me.connectContactsEnabled));
     setPremium(me.premium || { isPremium: false, premiumUntil: null });
     setScores(me.scores || {});
@@ -137,16 +172,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const login = async (payload: { email: string; password: string }) => {
-    const data = await apiRequest<{ token: string }>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    });
+    await withAuthRetry(() => apiRequest('/health'));
+    const data = await withAuthRetry(() =>
+      apiRequest<{ token: string }>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      })
+    );
     await AsyncStorage.setItem('soul_mirror_token', data.token);
     setToken(data.token);
     const me = await apiRequest<{
       user: User;
       profileComplete: boolean;
       privateProfileComplete: boolean;
+      termsAccepted: boolean;
       premium: PremiumStatus;
       connectContactsEnabled: boolean;
       scores: Record<string, number | null>;
@@ -159,10 +198,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(me.user);
     setProfileComplete(me.profileComplete);
     setPrivateProfileComplete(me.privateProfileComplete);
+    setTermsAccepted(Boolean(me.termsAccepted));
     setConnectContactsEnabled(Boolean(me.connectContactsEnabled));
     setPremium(me.premium || { isPremium: false, premiumUntil: null });
     setScores(me.scores || {});
     setInterpretations(me.interpretations || null);
+  };
+
+  const acceptTerms = async () => {
+    if (!token) throw new Error('Not authenticated');
+    await apiRequest('/compliance/accept-terms', { method: 'POST' }, token);
+    setTermsAccepted(true);
+    await refreshMe();
   };
 
   const logout = async () => {
@@ -178,6 +225,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setProfileComplete(false);
     setPrivateProfileComplete(false);
+    setTermsAccepted(false);
     setConnectContactsEnabled(false);
     setPremium({ isPremium: false, premiumUntil: null });
     setScores({});
@@ -192,6 +240,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setProfileComplete(false);
     setPrivateProfileComplete(false);
+    setTermsAccepted(false);
     setConnectContactsEnabled(false);
     setPremium({ isPremium: false, premiumUntil: null });
     setScores({});
@@ -294,12 +343,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       profileComplete,
       privateProfileComplete,
+      termsAccepted,
       connectContactsEnabled,
       premium,
       scores,
       interpretations,
       signUp,
       login,
+      acceptTerms,
       logout,
       deleteAccount,
       refreshMe,
@@ -313,7 +364,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setScores,
       setInterpretations
     }),
-    [loading, token, user, profileComplete, privateProfileComplete, connectContactsEnabled, premium, scores, interpretations]
+    [loading, token, user, profileComplete, privateProfileComplete, termsAccepted, connectContactsEnabled, premium, scores, interpretations]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

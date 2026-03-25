@@ -7,11 +7,9 @@ import { colors } from '../theme';
 
 export function SettingsScreen({
   onOpenLegal,
-  onOpenPremium,
   onBack
 }: {
   onOpenLegal: () => void;
-  onOpenPremium: () => void;
   onBack: () => void;
 }) {
   const { t } = useL10n();
@@ -46,7 +44,6 @@ export function SettingsScreen({
 
       <Card>
         <PrimaryButton label={t('Open legal pages', '查看法律页面')} onPress={onOpenLegal} />
-        <SecondaryButton label={t('Premium', '高级会员')} onPress={onOpenPremium} />
         {user?.community_label ? <SecondaryButton label={`${t('Leave', '退出')} ${user.community_label}`} onPress={leaveCommunity} /> : null}
         <SecondaryButton label={t('Logout', '退出登录')} onPress={logout} />
       </Card>

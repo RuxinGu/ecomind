@@ -60,6 +60,7 @@ export async function initSchema() {
       connect_contacts_enabled BOOLEAN NOT NULL DEFAULT FALSE,
       preferred_language TEXT,
       community_label TEXT,
+      terms_accepted_at TIMESTAMPTZ,
       is_permanently_blocked BOOLEAN NOT NULL DEFAULT FALSE,
       permanent_block_reason TEXT,
       permanently_blocked_at TIMESTAMPTZ,
@@ -104,6 +105,10 @@ export async function initSchema() {
       target_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
       message_id BIGINT REFERENCES messages(id) ON DELETE SET NULL,
       reason TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      reviewed_at TIMESTAMPTZ,
+      reviewed_by TEXT,
+      resolution TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
@@ -168,11 +173,16 @@ export async function initSchema() {
   await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS connect_contacts_enabled BOOLEAN NOT NULL DEFAULT FALSE');
   await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_language TEXT');
   await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS community_label TEXT');
+  await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ');
   await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT');
   await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS default_questions TEXT');
   await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS is_permanently_blocked BOOLEAN NOT NULL DEFAULT FALSE');
   await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS permanent_block_reason TEXT');
   await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS permanently_blocked_at TIMESTAMPTZ');
+  await query("ALTER TABLE reports ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending'");
+  await query('ALTER TABLE reports ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ');
+  await query('ALTER TABLE reports ADD COLUMN IF NOT EXISTS reviewed_by TEXT');
+  await query('ALTER TABLE reports ADD COLUMN IF NOT EXISTS resolution TEXT');
 }
 
 export default pool;

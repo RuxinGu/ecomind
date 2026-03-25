@@ -24,20 +24,19 @@ export function LegalScreen({ onBack }: { onBack: () => void }) {
         <Text style={styles.heading}>{t('Terms of Use', '使用条款')}</Text>
         <Text style={styles.text}>
           {t(
-            'Users must be 18 or older, provide accurate information, and follow community standards. Harassment, hate speech, coercion, or impersonation can result in account restrictions.',
-            '用户需年满 18 岁，提供真实信息并遵守社区规范。骚扰、仇恨言论、胁迫或冒充行为可能导致账号受限。'
+            'Users must be 18 or older, provide accurate information, and follow community standards. We have zero tolerance for objectionable content and abusive users. Harassment, hate speech, coercion, or impersonation can result in immediate account restrictions or bans.',
+            '用户需年满 18 岁，提供真实信息并遵守社区规范。我们对不当内容和滥用用户零容忍。骚扰、仇恨言论、胁迫或冒充行为可能导致账号立即受限或封禁。'
           )}
         </Text>
       </Card>
 
       <Card>
         <Text style={styles.heading}>{t('Community Guidelines', '社区规范')}</Text>
-        <Text style={styles.text}>
-          {t(
-            'Respect consent and boundaries. Keep chat authentic and non-abusive. Use report and block tools whenever behavior is unsafe, manipulative, or inappropriate.',
-            '请尊重同意与边界。保持真实、友善沟通。遇到不安全、操控或不当行为时，请及时使用举报和拉黑功能。'
-          )}
-        </Text>
+        <Text style={styles.text}>• No harassment, hate speech, or abusive behavior</Text>
+        <Text style={styles.text}>• No sexual or explicit content</Text>
+        <Text style={styles.text}>• No spam or misleading content</Text>
+        <Text style={styles.text}>• Users violating rules will be banned</Text>
+        <Text style={styles.text}>• We review all reported content within 24 hours and take appropriate action, including removing content and banning users.</Text>
       </Card>
 
       <SecondaryButton label={t('Back', '返回')} onPress={onBack} />

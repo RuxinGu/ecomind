@@ -9,11 +9,17 @@ import type { ChatMessage, Match } from '../lib/types';
 import { colors } from '../theme';
 
 const cuteEmojis = ['😊', '🥰', '💖', '🌸', '✨', '🫶', '🐻', '😻', '🌷', '💫'];
+const badWords = ['fuck', 'sex', 'hate', 'kill'];
 
 function buildMatchRoomId(myUserId: number, otherUserId: number) {
   const a = Math.min(myUserId, otherUserId);
   const b = Math.max(myUserId, otherUserId);
   return `match-${a}-${b}`;
+}
+
+function containsBadWord(text: string | null | undefined) {
+  const value = String(text || '').toLowerCase();
+  return badWords.some((word) => value.includes(word));
 }
 
 export function ChatScreen({
@@ -30,7 +36,7 @@ export function ChatScreen({
   initialMessage?: string | null;
 }) {
   const { t } = useL10n();
-  const { token, user, logout, premium } = useAuth();
+  const { token, user, logout } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -225,7 +231,13 @@ export function ChatScreen({
       onBackToResults();
       return;
     }
-    Alert.alert(t('Report submitted', '举报已提交'), t('Thanks. Our moderation team will review this report.', '感谢反馈，我们会尽快审核。'));
+    Alert.alert(
+      t('Report submitted', '举报已提交'),
+      t(
+        'We review all reported content within 24 hours and remove inappropriate content. Users who violate guidelines may be banned.',
+        '我们会在 24 小时内审核所有举报内容并移除不当内容。违反规范的用户可能会被封禁。'
+      )
+    );
   };
 
   const reportMatchUser = async () => {
@@ -249,11 +261,29 @@ export function ChatScreen({
       onBackToResults();
       return;
     }
-    Alert.alert(t('Report submitted', '举报已提交'), t('Thanks. Our moderation team will review this report.', '感谢反馈，我们会尽快审核。'));
+    Alert.alert(
+      t('Report submitted', '举报已提交'),
+      t(
+        'We review all reported content within 24 hours and remove inappropriate content. Users who violate guidelines may be banned.',
+        '我们会在 24 小时内审核所有举报内容并移除不当内容。违反规范的用户可能会被封禁。'
+      )
+    );
   };
 
   const blockUser = async (message: ChatMessage) => {
     if (!token) return;
+    await apiRequest(
+      '/safety/report',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          targetUserId: message.sender_id,
+          messageId: message.id,
+          reason: 'User blocked for guideline violation'
+        })
+      },
+      token
+    );
     await apiRequest(
       '/safety/block',
       {
@@ -262,6 +292,7 @@ export function ChatScreen({
       },
       token
     );
+    setMessages((prev) => prev.filter((item) => item.sender_id !== message.sender_id));
     Alert.alert(t('User blocked', '已拉黑用户'), `${message.sender_name}${t(' has been blocked.', ' 已被拉黑。')}`);
     onBackToResults();
   };
@@ -283,7 +314,7 @@ export function ChatScreen({
       </View>
       <ScreenTitle
         title={`Soul Chat • ${selectedMatch.name}`}
-        subtitle={`${selectedMatch.compatibility}% ${t('resonance', '共鸣')}。${premium.isPremium ? t('Premium unlock active.', '高级权限已开启。') : t('Send flowers for 5 mutual days to unlock private profile.', '双方连续互送鲜花 5 天可解锁私密资料。')}`}
+        subtitle={`${selectedMatch.compatibility}% ${t('resonance', '共鸣')}。${t('Send flowers for 5 mutual days to unlock private profile.', '双方连续互送鲜花 5 天可解锁私密资料。')}`}
       />
 
       <Card>
@@ -329,11 +360,13 @@ export function ChatScreen({
           {loading ? <Text style={styles.caption}>{t('Loading chat...', '正在加载聊天...')}</Text> : null}
           {messages.map((message) => {
             const mine = user?.id === message.sender_id;
+            const flagged = containsBadWord(message.text);
             return (
               <View key={message.id} style={[styles.bubble, mine ? styles.mine : styles.theirs]}>
                 <Text style={[styles.sender, mine && styles.mineText]}>{mine ? t('You', '你') : message.sender_name}</Text>
                 {message.text ? <Text style={[styles.messageText, mine && styles.mineText]}>{message.text}</Text> : null}
                 {message.image_url ? <Image source={{ uri: message.image_url }} style={styles.messageImage} /> : null}
+                {flagged ? <Text style={styles.flagText}>{t('Potential guideline violation detected.', '检测到可能违反社区规范的内容。')}</Text> : null}
                 {!mine ? (
                   <View style={styles.actionRow}>
                     <Pressable onPress={() => reportMessage(message)}>
@@ -634,5 +667,10 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontWeight: '700',
     fontSize: 12
+  },
+  flagText: {
+    color: colors.danger,
+    fontSize: 12,
+    fontWeight: '700'
   }
 });

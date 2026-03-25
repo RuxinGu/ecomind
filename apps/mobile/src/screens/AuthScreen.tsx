@@ -12,6 +12,7 @@ export function AuthScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [agreedGuidelines, setAgreedGuidelines] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -19,6 +20,10 @@ export function AuthScreen() {
     setError('');
     if (!email || !password || (mode === 'signup' && !name)) {
       setError(t('Please complete all required fields.', '请填写所有必填项。'));
+      return;
+    }
+    if (mode === 'signup' && !agreedGuidelines) {
+      setError('Please agree to the Terms & Community Guidelines.');
       return;
     }
 
@@ -62,9 +67,29 @@ export function AuthScreen() {
         />
         <Field label={t('Password', '密码')} value={password} onChangeText={setPassword} placeholder={t('At least 6 characters', '至少 6 位字符')} />
 
+        {mode === 'signup' ? (
+          <View style={styles.guidelinesBlock}>
+            <Text style={styles.guidelineTitle}>EcoMind Community Guidelines</Text>
+            <Text style={styles.guidelineItem}>• No harassment, hate speech, or abusive behavior</Text>
+            <Text style={styles.guidelineItem}>• No sexual or explicit content</Text>
+            <Text style={styles.guidelineItem}>• No spam or misleading content</Text>
+            <Text style={styles.guidelineItem}>• Users violating rules will be banned</Text>
+            <Text style={styles.guidelineFooter}>We review all reported content within 24 hours and take appropriate action, including removing content and banning users.</Text>
+            <Pressable style={styles.agreeRow} onPress={() => setAgreedGuidelines((prev) => !prev)}>
+              <Text style={styles.agreeBox}>{agreedGuidelines ? '☑' : '☐'}</Text>
+              <Text style={styles.agreeText}>I agree to the Terms & Community Guidelines</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         {error ? <Text style={uiStyles.errorText}>{error}</Text> : null}
 
-        <PrimaryButton label={mode === 'signup' ? t('Create account', '创建账号') : t('Log in', '登录')} onPress={submit} loading={loading} />
+        <PrimaryButton
+          label={mode === 'signup' ? t('Create account', '创建账号') : t('Log in', '登录')}
+          onPress={submit}
+          loading={loading}
+          disabled={mode === 'signup' && !agreedGuidelines}
+        />
         <SecondaryButton
           label={
             mode === 'signup'
@@ -109,5 +134,42 @@ const styles = StyleSheet.create({
   },
   modeTextActive: {
     color: colors.text
+  },
+  agreeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2
+  },
+  agreeBox: {
+    color: colors.text,
+    fontSize: 18,
+    width: 24
+  },
+  agreeText: {
+    color: colors.text,
+    flex: 1
+  },
+  guidelinesBlock: {
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    backgroundColor: colors.bgAlt,
+    padding: 12,
+    gap: 4
+  },
+  guidelineTitle: {
+    color: colors.text,
+    fontWeight: '800',
+    fontSize: 16
+  },
+  guidelineItem: {
+    color: colors.text,
+    lineHeight: 22
+  },
+  guidelineFooter: {
+    color: colors.textMuted,
+    lineHeight: 20
   }
 });
