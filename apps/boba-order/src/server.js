@@ -297,7 +297,7 @@ app.get('/qr', (req, res) => {
 
 app.use((err, req, res, next) => {
   console.error(err);
-  const message = err?.raw || err?.type ? err.message : 'Something went wrong.';
+  const message = err?.message || 'Something went wrong.';
   res.status(500).json({
     error: message,
     type: err?.type || undefined,
