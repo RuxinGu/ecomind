@@ -18,6 +18,26 @@ Useful pages:
 - QR code page: `/qr`
 - Health check: `/health`
 
+## Online Payments
+
+Online payment uses Stripe Checkout. Customers enter card details on Stripe's hosted payment page.
+
+Add these environment variables in Render before enabling payment:
+
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `PUBLIC_URL=https://boba-garden-orders.onrender.com`
+
+Create a Stripe webhook endpoint that points to:
+
+`https://boba-garden-orders.onrender.com/api/stripe/webhook`
+
+Subscribe the webhook to:
+
+- `checkout.session.completed`
+
+Orders start as unpaid. When Stripe confirms the Checkout Session through the webhook, the owner screen marks the order as paid.
+
 ## Data Storage
 
 Orders are saved to `DATA_DIR/orders.json`.

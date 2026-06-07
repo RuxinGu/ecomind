@@ -2,6 +2,7 @@ import express from 'express';
 import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
+import Stripe from 'stripe';
 import { fileURLToPath } from 'node:url';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 
@@ -14,8 +15,43 @@ const ordersFile = path.join(dataDir, 'orders.json');
 
 const app = express();
 const port = Number(process.env.PORT || 5050);
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
 app.set('trust proxy', true);
+
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) {
+    return res.status(503).json({ error: 'Stripe webhook is not configured.' });
+  }
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, req.get('stripe-signature'), process.env.STRIPE_WEBHOOK_SECRET);
+  } catch (err) {
+    return res.status(400).json({ error: `Webhook signature failed: ${err.message}` });
+  }
+
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    const orderId = session.metadata?.orderId;
+    if (orderId) {
+      const orders = await readOrders();
+      const order = orders.find((entry) => entry.id === orderId);
+      if (order) {
+        order.payment.status = 'paid';
+        order.payment.method = 'stripe';
+        order.payment.stripeCheckoutSessionId = session.id;
+        order.payment.stripePaymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : null;
+        order.payment.paidAt = new Date().toISOString();
+        order.updatedAt = new Date().toISOString();
+        await saveOrders(orders);
+      }
+    }
+  }
+
+  res.json({ received: true });
+});
+
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(publicDir));
 
@@ -65,6 +101,10 @@ async function saveOrders(orders) {
 function money(value) {
   const number = Number(value);
   return Number.isFinite(number) ? Math.round(number * 100) / 100 : 0;
+}
+
+function cents(value) {
+  return Math.max(50, Math.round(money(value) * 100));
 }
 
 function cleanText(value, max = 120) {
@@ -117,13 +157,21 @@ app.get('/api/config', (req, res) => {
     baseUrl,
     orderUrl: `${baseUrl}/`,
     ownerUrl: `${baseUrl}/orders`,
-    qrUrl: `${baseUrl}/qr`
+    qrUrl: `${baseUrl}/qr`,
+    paymentEnabled: Boolean(stripe)
   });
 });
 
 app.get('/api/orders', async (req, res) => {
   const orders = await readOrders();
   res.json({ orders: orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) });
+});
+
+app.get('/api/orders/:id', async (req, res) => {
+  const orders = await readOrders();
+  const order = orders.find((entry) => entry.id === req.params.id);
+  if (!order) return res.status(404).json({ error: 'Order not found.' });
+  res.json({ order });
 });
 
 app.post('/api/orders', async (req, res) => {
@@ -137,6 +185,13 @@ app.post('/api/orders', async (req, res) => {
     id: randomUUID(),
     number: orderNumber(),
     status: 'new',
+    payment: {
+      status: 'unpaid',
+      method: 'counter',
+      stripeCheckoutSessionId: null,
+      stripePaymentIntentId: null,
+      paidAt: null
+    },
     createdAt: now,
     updatedAt: now,
     ...input
@@ -145,6 +200,52 @@ app.post('/api/orders', async (req, res) => {
   orders.push(order);
   await saveOrders(orders);
   res.status(201).json({ order });
+});
+
+app.post('/api/orders/:id/checkout', async (req, res) => {
+  if (!stripe) return res.status(503).json({ error: 'Online payments are not configured yet.' });
+
+  const orders = await readOrders();
+  const order = orders.find((entry) => entry.id === req.params.id);
+  if (!order) return res.status(404).json({ error: 'Order not found.' });
+  if (order.payment?.status === 'paid') return res.json({ paid: true, order });
+
+  const baseUrl = publicBaseUrl(req);
+  const session = await stripe.checkout.sessions.create({
+    mode: 'payment',
+    client_reference_id: order.id,
+    customer_email: cleanText(req.body?.email, 120) || undefined,
+    line_items: [
+      {
+        quantity: 1,
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: `Boba Garden order ${order.number}`,
+            description: `${order.items.length} item${order.items.length === 1 ? '' : 's'} for ${order.customer.name}`
+          },
+          unit_amount: cents(order.total)
+        }
+      }
+    ],
+    metadata: {
+      orderId: order.id,
+      orderNumber: order.number
+    },
+    success_url: `${baseUrl}/?payment=success&order=${order.id}`,
+    cancel_url: `${baseUrl}/?payment=cancelled&order=${order.id}`
+  });
+
+  order.payment = {
+    ...(order.payment || {}),
+    status: 'pending',
+    method: 'stripe',
+    stripeCheckoutSessionId: session.id
+  };
+  order.updatedAt = new Date().toISOString();
+  await saveOrders(orders);
+
+  res.json({ checkoutUrl: session.url });
 });
 
 app.patch('/api/orders/:id', async (req, res) => {

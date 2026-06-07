@@ -465,6 +465,48 @@ h1, h2, h3 {
   line-height: 1.45;
 }
 
+.payment-box {
+  width: 100%;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  padding: 16px;
+  text-align: left;
+}
+
+.payment-box p {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.payment-box .form-error {
+  margin: 8px 0 0;
+}
+
+.pay-btn {
+  width: 100%;
+  margin: 14px 0 0;
+}
+
+.payment-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  border-radius: 999px;
+  background: var(--peach);
+  color: #7b4f2e;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.payment-pill.paid {
+  background: var(--mint);
+  color: #286d56;
+}
+
 .form-error {
   min-height: 20px;
   margin: -8px 16px 0;
@@ -696,6 +738,13 @@ h1, h2, h3 {
   border-bottom: 1px solid var(--border);
   padding-bottom: 10px;
   margin-bottom: 10px;
+}
+
+.owner-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
 }
 
 .owner-card h3 {

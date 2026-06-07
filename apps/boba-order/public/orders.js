@@ -26,6 +26,8 @@ function orderCard(order) {
   const completeButton = order.status === 'new'
     ? `<button class="complete-btn" type="button" data-complete="${order.id}">Mark complete</button>`
     : '';
+  const paymentStatus = order.payment?.status || 'unpaid';
+  const paymentText = paymentStatus === 'paid' ? 'Paid online' : paymentStatus === 'pending' ? 'Payment pending' : 'Unpaid';
 
   return `<article class="owner-card ${order.status === 'completed' ? 'completed' : ''}">
     <div class="owner-card-head">
@@ -33,7 +35,10 @@ function orderCard(order) {
         <h3>${escapeHtml(order.number)}</h3>
         <div class="order-time">${timeLabel(order.createdAt)}</div>
       </div>
-      ${completeButton}
+      <div class="owner-actions">
+        <span class="payment-pill ${paymentStatus === 'paid' ? 'paid' : ''}">${paymentText}</span>
+        ${completeButton}
+      </div>
     </div>
     <p class="owner-meta">${customerLine || 'No customer details'}</p>
     <p class="owner-meta"><strong>Sweetness / Ice:</strong> ${escapeHtml(order.preferences?.sweetness)} / ${escapeHtml(order.preferences?.ice)}</p>

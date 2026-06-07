@@ -11,6 +11,8 @@ const MENU = [
 
 let cart = [];
 let modalItem = null;
+let appConfig = { paymentEnabled: false };
+let currentOrder = null;
 
 function money(value) {
   return `$${Number(value || 0).toFixed(2)}`;
@@ -220,7 +222,9 @@ async function placeOrder() {
 }
 
 function showConfirmation(order) {
+  currentOrder = order;
   document.getElementById('conf-order-num').textContent = order.number;
+  renderPaymentState(order);
   document.getElementById('conf-breakdown').innerHTML = `
     ${order.items.map((entry) => `
       <div class="review-row">
@@ -232,6 +236,95 @@ function showConfirmation(order) {
   cart = [];
   updateCartUI();
   goScreen('confirm-screen');
+}
+
+function paymentLabel(status) {
+  if (status === 'paid') return 'Paid online';
+  if (status === 'pending') return 'Payment pending';
+  return 'Payment due';
+}
+
+function renderPaymentState(order, message) {
+  const status = order.payment?.status || 'unpaid';
+  const payButton = document.getElementById('pay-now-btn');
+  const statusEl = document.getElementById('payment-status');
+  const messageEl = document.getElementById('payment-message');
+  const errorEl = document.getElementById('payment-error');
+
+  statusEl.textContent = paymentLabel(status);
+  statusEl.classList.toggle('paid', status === 'paid');
+  errorEl.textContent = '';
+
+  if (status === 'paid') {
+    payButton.hidden = true;
+    messageEl.textContent = message || 'Payment received. Please show your order number at pickup.';
+    return;
+  }
+
+  payButton.hidden = !appConfig.paymentEnabled;
+  messageEl.textContent = message || (appConfig.paymentEnabled
+    ? 'Pay online now, or pay at the counter when you pick up.'
+    : 'Online payment is not configured yet. Please pay at the counter when you pick up.');
+}
+
+async function payForCurrentOrder() {
+  if (!currentOrder) return;
+  const button = document.getElementById('pay-now-btn');
+  const error = document.getElementById('payment-error');
+  button.disabled = true;
+  button.textContent = 'Opening payment...';
+  error.textContent = '';
+
+  try {
+    const res = await fetch(`/api/orders/${currentOrder.id}/checkout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not start payment.');
+    if (data.paid) {
+      showConfirmation(data.order);
+      return;
+    }
+    window.location.href = data.checkoutUrl;
+  } catch (err) {
+    error.textContent = err.message;
+    button.disabled = false;
+    button.textContent = 'Pay now';
+  }
+}
+
+async function loadReturnedOrder() {
+  const params = new URLSearchParams(window.location.search);
+  const orderId = params.get('order');
+  const payment = params.get('payment');
+  if (!orderId || !payment) return;
+
+  try {
+    const res = await fetch(`/api/orders/${orderId}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Order not found.');
+    showConfirmation(data.order);
+    renderPaymentState(
+      data.order,
+      payment === 'success'
+        ? 'Thanks. Payment may take a moment to update on the order screen.'
+        : 'Payment was cancelled. You can try again or pay at the counter.'
+    );
+    window.history.replaceState({}, '', '/');
+  } catch {
+    goScreen('menu-screen');
+  }
+}
+
+async function loadConfig() {
+  try {
+    const res = await fetch('/api/config');
+    appConfig = await res.json();
+  } catch {
+    appConfig = { paymentEnabled: false };
+  }
 }
 
 document.addEventListener('click', (event) => {
@@ -325,9 +418,17 @@ document.addEventListener('click', (event) => {
     return;
   }
 
+  if (event.target.closest('#pay-now-btn')) {
+    payForCurrentOrder();
+    return;
+  }
+
   if (event.target.closest('#new-order-btn')) {
     goScreen('menu-screen');
   }
 });
 
-renderMenu();
+loadConfig().then(() => {
+  renderMenu();
+  loadReturnedOrder();
+});

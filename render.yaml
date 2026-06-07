@@ -34,6 +34,12 @@ services:
         value: production
       - key: DATA_DIR
         value: /var/data
+      - key: PUBLIC_URL
+        value: https://boba-garden-orders.onrender.com
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
     disk:
       name: order-data
       mountPath: /var/data
