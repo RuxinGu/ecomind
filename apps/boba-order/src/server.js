@@ -279,7 +279,11 @@ app.get('/qr', (req, res) => {
 app.use((err, req, res, next) => {
   console.error(err);
   const message = err?.raw || err?.type?.startsWith('Stripe') ? err.message : 'Something went wrong.';
-  res.status(500).json({ error: message });
+  res.status(500).json({
+    error: message,
+    type: err?.type || undefined,
+    code: err?.code || undefined
+  });
 });
 
 app.listen(port, '0.0.0.0', () => {
