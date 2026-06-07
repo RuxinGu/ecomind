@@ -19,7 +19,7 @@ const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SEC
 
 app.set('trust proxy', true);
 
-app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), asyncRoute(async (req, res) => {
   if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) {
     return res.status(503).json({ error: 'Stripe webhook is not configured.' });
   }
@@ -50,12 +50,18 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
   }
 
   res.json({ received: true });
-});
+}));
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(publicDir));
 
 let writeQueue = Promise.resolve();
+
+function asyncRoute(handler) {
+  return (req, res, next) => {
+    Promise.resolve(handler(req, res, next)).catch(next);
+  };
+}
 
 function localIpAddress() {
   const nets = os.networkInterfaces();
@@ -162,19 +168,19 @@ app.get('/api/config', (req, res) => {
   });
 });
 
-app.get('/api/orders', async (req, res) => {
+app.get('/api/orders', asyncRoute(async (req, res) => {
   const orders = await readOrders();
   res.json({ orders: orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) });
-});
+}));
 
-app.get('/api/orders/:id', async (req, res) => {
+app.get('/api/orders/:id', asyncRoute(async (req, res) => {
   const orders = await readOrders();
   const order = orders.find((entry) => entry.id === req.params.id);
   if (!order) return res.status(404).json({ error: 'Order not found.' });
   res.json({ order });
-});
+}));
 
-app.post('/api/orders', async (req, res) => {
+app.post('/api/orders', asyncRoute(async (req, res) => {
   const input = normalizeOrder(req.body || {});
   if (!input.customer.name) return res.status(400).json({ error: 'Customer name is required.' });
   if (input.items.length === 0) return res.status(400).json({ error: 'Order must include at least one item.' });
@@ -200,9 +206,9 @@ app.post('/api/orders', async (req, res) => {
   orders.push(order);
   await saveOrders(orders);
   res.status(201).json({ order });
-});
+}));
 
-app.post('/api/orders/:id/checkout', async (req, res) => {
+app.post('/api/orders/:id/checkout', asyncRoute(async (req, res) => {
   if (!stripe) return res.status(503).json({ error: 'Online payments are not configured yet.' });
 
   const orders = await readOrders();
@@ -246,9 +252,9 @@ app.post('/api/orders/:id/checkout', async (req, res) => {
   await saveOrders(orders);
 
   res.json({ checkoutUrl: session.url });
-});
+}));
 
-app.patch('/api/orders/:id', async (req, res) => {
+app.patch('/api/orders/:id', asyncRoute(async (req, res) => {
   const status = cleanText(req.body?.status, 20);
   if (!['new', 'completed'].includes(status)) return res.status(400).json({ error: 'Invalid status.' });
 
@@ -260,7 +266,7 @@ app.patch('/api/orders/:id', async (req, res) => {
   order.updatedAt = new Date().toISOString();
   await saveOrders(orders);
   res.json({ order });
-});
+}));
 
 app.get('/orders', (req, res) => {
   res.sendFile(path.join(publicDir, 'orders.html'));
@@ -268,6 +274,12 @@ app.get('/orders', (req, res) => {
 
 app.get('/qr', (req, res) => {
   res.sendFile(path.join(publicDir, 'qr.html'));
+});
+
+app.use((err, req, res, next) => {
+  console.error(err);
+  const message = err?.raw || err?.type?.startsWith('Stripe') ? err.message : 'Something went wrong.';
+  res.status(500).json({ error: message });
 });
 
 app.listen(port, '0.0.0.0', () => {
