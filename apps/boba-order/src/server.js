@@ -15,7 +15,8 @@ const ordersFile = path.join(dataDir, 'orders.json');
 
 const app = express();
 const port = Number(process.env.PORT || 5050);
-const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY?.trim();
+const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
 
 app.set('trust proxy', true);
 
@@ -140,7 +141,7 @@ async function createCheckoutSession(order, baseUrl, email) {
   const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+      Authorization: `Bearer ${stripeSecretKey}`,
       'Content-Type': 'application/x-www-form-urlencoded'
     },
     body: form
