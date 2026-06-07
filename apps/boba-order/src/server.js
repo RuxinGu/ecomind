@@ -113,6 +113,48 @@ function cents(value) {
   return Math.max(50, Math.round(money(value) * 100));
 }
 
+function stripeForm(params) {
+  const form = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null) form.append(key, String(value));
+  }
+  return form;
+}
+
+async function createCheckoutSession(order, baseUrl, email) {
+  const form = stripeForm({
+    mode: 'payment',
+    client_reference_id: order.id,
+    customer_email: cleanText(email, 120) || undefined,
+    'line_items[0][quantity]': 1,
+    'line_items[0][price_data][currency]': 'usd',
+    'line_items[0][price_data][product_data][name]': `Boba Garden order ${order.number}`,
+    'line_items[0][price_data][product_data][description]': `${order.items.length} item${order.items.length === 1 ? '' : 's'} for ${order.customer.name}`,
+    'line_items[0][price_data][unit_amount]': cents(order.total),
+    'metadata[orderId]': order.id,
+    'metadata[orderNumber]': order.number,
+    success_url: `${baseUrl}/?payment=success&order=${order.id}`,
+    cancel_url: `${baseUrl}/?payment=cancelled&order=${order.id}`
+  });
+
+  const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: form
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    const error = new Error(data.error?.message || 'Stripe Checkout failed.');
+    error.type = data.error?.type;
+    error.code = data.error?.code;
+    throw error;
+  }
+  return data;
+}
+
 function cleanText(value, max = 120) {
   return String(value || '').trim().slice(0, max);
 }
@@ -217,30 +259,7 @@ app.post('/api/orders/:id/checkout', asyncRoute(async (req, res) => {
   if (order.payment?.status === 'paid') return res.json({ paid: true, order });
 
   const baseUrl = publicBaseUrl(req);
-  const session = await stripe.checkout.sessions.create({
-    mode: 'payment',
-    client_reference_id: order.id,
-    customer_email: cleanText(req.body?.email, 120) || undefined,
-    line_items: [
-      {
-        quantity: 1,
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: `Boba Garden order ${order.number}`,
-            description: `${order.items.length} item${order.items.length === 1 ? '' : 's'} for ${order.customer.name}`
-          },
-          unit_amount: cents(order.total)
-        }
-      }
-    ],
-    metadata: {
-      orderId: order.id,
-      orderNumber: order.number
-    },
-    success_url: `${baseUrl}/?payment=success&order=${order.id}`,
-    cancel_url: `${baseUrl}/?payment=cancelled&order=${order.id}`
-  });
+  const session = await createCheckoutSession(order, baseUrl, req.body?.email);
 
   order.payment = {
     ...(order.payment || {}),
@@ -278,7 +297,7 @@ app.get('/qr', (req, res) => {
 
 app.use((err, req, res, next) => {
   console.error(err);
-  const message = err?.raw || err?.type?.startsWith('Stripe') ? err.message : 'Something went wrong.';
+  const message = err?.raw || err?.type ? err.message : 'Something went wrong.';
   res.status(500).json({
     error: message,
     type: err?.type || undefined,
