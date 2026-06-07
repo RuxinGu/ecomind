@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Boba Garden - QR Code</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+  <main class="qr-page">
+    <p class="hero-eyebrow">Boba Garden</p>
+    <h1>Scan to order</h1>
+    <div class="qr-box" id="qr-code"></div>
+    <p class="counter-note">Customers must be on the same Wi-Fi as this order server.</p>
+    <a id="order-url" class="qr-url" href="/"></a>
+    <div class="owner-links centered">
+      <a href="/orders">Open orders</a>
+      <a href="/">Open customer page</a>
+    </div>
+  </main>
+  <script>
+    fetch('/api/config')
+      .then((res) => res.json())
+      .then((config) => {
+        const link = document.getElementById('order-url');
+        link.href = config.orderUrl;
+        link.textContent = config.orderUrl;
+        if (window.QRCode) {
+          new QRCode(document.getElementById('qr-code'), {
+            text: config.orderUrl,
+            width: 220,
+            height: 220,
+            colorDark: '#3D2314',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H
+          });
+        } else {
+          document.getElementById('qr-code').textContent = 'QR library could not load. Use the link below.';
+        }
+      });
+  </script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Boba Garden - Orders</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="wide">
+  <header class="owner-header">
+    <div>
+      <p class="hero-eyebrow">Boba Garden</p>
+      <h1>Orders</h1>
+    </div>
+    <div class="owner-links">
+      <a href="/qr">QR code</a>
+      <a href="/">Customer page</a>
+    </div>
+  </header>
+  <main class="owner-layout">
+    <section>
+      <div class="owner-section-title">
+        <h2>New orders</h2>
+        <span id="new-count">0</span>
+      </div>
+      <div id="new-orders" class="order-list"></div>
+    </section>
+    <section>
+      <div class="owner-section-title">
+        <h2>Completed</h2>
+        <span id="complete-count">0</span>
+      </div>
+      <div id="completed-orders" class="order-list"></div>
+    </section>
+  </main>
+  <script src="/orders.js"></script>
+</body>
+</html>
