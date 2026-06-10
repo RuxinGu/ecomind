@@ -1,63 +1,209 @@
 const MENU = [
-  { id: 1, name: 'Taro Milk Tea', cat: 'Milk Tea', desc: 'Creamy taro, tapioca pearls', price: 6.5, color: '#E8D5F5', stroke: '#C4A8E0', straw: '#B090D0', badge: 'fave' },
-  { id: 2, name: 'Strawberry Lychee', cat: 'Fruit Tea', desc: 'Sweet fruit tea, lychee jelly', price: 6.75, color: '#FFD4E2', stroke: '#F0A0C0', straw: '#E8809C' },
-  { id: 3, name: 'Matcha Oat Latte', cat: 'Milk Tea', desc: 'Earthy matcha, silky oat milk', price: 7, color: '#C8EDE3', stroke: '#80C8B0', straw: '#50A878', badge: 'new' },
-  { id: 4, name: 'Mango Passionfruit', cat: 'Fruit Tea', desc: 'Tropical blend, coconut jelly', price: 6.75, color: '#FDE8C0', stroke: '#F0C070', straw: '#E0A030' },
-  { id: 5, name: 'Blue Ocean Slush', cat: 'Slushie', desc: 'Blueberry citrus slushie', price: 6.25, color: '#D4EBFA', stroke: '#90C8EE', straw: '#60A8D8' },
-  { id: 6, name: 'Honeydew Dream', cat: 'Seasonal', desc: 'Melon milk tea, basil seeds', price: 7.25, color: '#FBF1C0', stroke: '#E0D070', straw: '#C8B030', badge: 'seasonal' },
-  { id: 7, name: 'Classic Brown Sugar', cat: 'Milk Tea', desc: 'Tiger sugar, fresh milk', price: 6.5, color: '#FDDCC4', stroke: '#F0B890', straw: '#D08040' },
-  { id: 8, name: 'Passion Fruit Green Tea', cat: 'Fruit Tea', desc: 'Tangy passion, jasmine green', price: 6, color: '#EAF7DF', stroke: '#A0D870', straw: '#70B840' }
+  { id: 1, name: 'Lemon Red Tea', cat: 'Tea', desc: 'Iced red tea with fresh lemon & lime slices', price: 4.00, color: '#FDE8C0', badge: 'fave', fruit: '#F6D54B', drink: '#B75A38' },
+  { id: 2, name: 'Mango Matcha', cat: 'Latte', desc: 'Layered mango, oat milk & ceremonial matcha', price: 5.00, color: '#C8EDE3', badge: 'new', fruit: '#F5A623', drink: '#7BBE76' },
+  { id: 3, name: 'Lemonade', cat: 'Lemonade', desc: 'Sparkling lemonade with cucumber & lemon', price: 3.00, color: '#FBF9C0', badge: null, fruit: '#F6E15B', drink: '#F9F3A5' },
+  { id: 4, name: 'Orange Lemon Tea', cat: 'Fruit Tea', desc: 'Vibrant orange juice with lime & cucumber', price: 4.00, color: '#FFE680', badge: 'new', fruit: '#F28C28', drink: '#F0A83A' }
 ];
 
 let cart = [];
 let modalItem = null;
-let appConfig = { paymentEnabled: false };
-let currentOrder = null;
 
-function money(value) {
-  return `$${Number(value || 0).toFixed(2)}`;
-}
+const PHOTOS = {
+  1: '/images/lemon-red-tea.png',
+  2: '/images/mango-matcha.png',
+  3: '/images/lemonade.png',
+  4: '/images/orange-lemon-tea.png'
+};
 
-function cupSVG(item, w = 58, h = 82) {
-  const pw = w * 0.69;
-  const ph = h * 0.79;
-  const px = (w - pw) / 2;
-  const py = h * 0.18;
-  const sx = w / 2 - w * 0.075;
-  const sy = h * 0.025;
-  const bubbles = [[0.38, 0.54, 0.056], [0.62, 0.62, 0.056], [0.3, 0.64, 0.05], [0.55, 0.7, 0.045], [0.7, 0.54, 0.044]];
-  const bubs = bubbles.map(([bx, by, br]) => `<circle cx="${w * bx}" cy="${h * by}" r="${w * br}" fill="#3D2314" opacity="0.82"/>`).join('');
-  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="${px}" y="${py}" width="${pw}" height="${ph}" rx="${w * 0.16}" fill="${item.color}" stroke="${item.stroke}" stroke-width="1.5"/>
-    <rect x="${px + w * 0.07}" y="${py + h * 0.07}" width="${pw - w * 0.14}" height="${ph - h * 0.07}" rx="${w * 0.12}" fill="${item.color}" opacity="0.7"/>
-    ${bubs}
-    <rect x="${sx}" y="${sy}" width="${w * 0.15}" height="${h * 0.19}" rx="${w * 0.05}" fill="${item.straw}"/>
-    <rect x="${px}" y="${py}" width="${pw}" height="${h * 0.1}" rx="${w * 0.16}" fill="white" opacity="0.28"/>
-  </svg>`;
-}
-
-function renderMenu(filter = 'All') {
+function renderMenu(filter) {
+  filter = filter || 'All';
   const body = document.getElementById('menu-body');
   const items = filter === 'All' ? MENU : MENU.filter((item) => item.cat === filter);
-  const cats = [...new Set(items.map((item) => item.cat))];
-  body.innerHTML = cats.map((cat) => {
-    const catItems = items.filter((item) => item.cat === cat);
-    return `<div class="section-heading">${cat}</div>
-      <div class="cards">
-        ${catItems.map((item) => `
-          <article class="card" data-open="${item.id}">
-            <div class="card-top-color" style="background:${item.color}"></div>
-            ${item.badge ? `<span class="badge">${item.badge}</span>` : ''}
-            <div class="cup">${cupSVG(item)}</div>
-            <div class="card-name">${item.name}</div>
-            <div class="card-desc">${item.desc}</div>
-            <div class="card-footer">
-              <span class="card-price">${money(item.price)}</span>
-              <button class="add-circle" type="button" data-quick="${item.id}" aria-label="Quick add ${item.name}">+</button>
-            </div>
-          </article>`).join('')}
-      </div>`;
+  if (items.length === 0) {
+    body.innerHTML = '<p style="text-align:center;padding:40px;color:var(--muted)">No items in this category</p>';
+    return;
+  }
+  const cards = items.map((item) => {
+    const badge = item.badge ? `<span class="badge">${item.badge}</span>` : '';
+    return `<div class="card" onclick="openModal(${item.id})">
+      <div class="card-top-color" style="background:${item.color}"></div>
+      ${badge}
+      <img class="card-photo" src="${PHOTOS[item.id]}" alt="${item.name}">
+      <div class="card-name">${item.name}</div>
+      <div class="card-desc">${item.desc}</div>
+      <div class="card-footer">
+        <span class="card-price">$${item.price.toFixed(2)}</span>
+        <button class="add-circle" onclick="quickAdd(event,${item.id})">+</button>
+      </div>
+    </div>`;
   }).join('');
+  body.innerHTML = `<div class="section-heading">Our Menu</div><div class="cards">${cards}</div>`;
+}
+
+function filterMenu(el, cat) {
+  document.querySelectorAll('.pill').forEach((pill) => pill.classList.remove('active'));
+  el.classList.add('active');
+  renderMenu(cat);
+}
+
+function openModal(id) {
+  modalItem = MENU.find((item) => item.id === id);
+  if (!modalItem) return;
+  document.getElementById('modal-photo').src = PHOTOS[id];
+  document.getElementById('modal-photo').alt = modalItem.name;
+  document.getElementById('modal-title').textContent = modalItem.name;
+  document.getElementById('modal-desc').textContent = `${modalItem.desc} · $${modalItem.price.toFixed(2)}`;
+  document.querySelectorAll('#modal-sizes .modal-opt').forEach((button, index) => button.classList.toggle('sel', index === 0));
+  document.querySelectorAll('#modal-toppings .modal-opt').forEach((button, index) => button.classList.toggle('sel', index === 0));
+  document.getElementById('modal-bg').classList.add('open');
+}
+
+function closeModalBg(event) {
+  if (event.target === document.getElementById('modal-bg')) closeModal();
+}
+
+function closeModal() {
+  document.getElementById('modal-bg').classList.remove('open');
+  modalItem = null;
+}
+
+function pickModalOpt(el) {
+  el.closest('.modal-opts').querySelectorAll('.modal-opt').forEach((button) => button.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function pickModalTop(el) {
+  const selected = Array.from(el.closest('.modal-opts').querySelectorAll('.sel'));
+  if (el.classList.contains('sel')) {
+    el.classList.remove('sel');
+    return;
+  }
+  if (selected.length >= 2) return;
+  el.classList.add('sel');
+}
+
+function addFromModal() {
+  if (!modalItem) return;
+  const sizeEl = document.querySelector('#modal-sizes .sel');
+  const sizeLabel = sizeEl ? sizeEl.textContent.trim() : 'Regular';
+  const sizeMod = sizeLabel.indexOf('+$1') >= 0 ? 1 : 0;
+  const toppings = Array.from(document.querySelectorAll('#modal-toppings .sel')).map((button) => button.textContent.trim());
+  addToCart(modalItem, sizeLabel.split('·')[0].trim(), sizeMod, toppings);
+  closeModal();
+}
+
+function quickAdd(event, id) {
+  event.stopPropagation();
+  const item = MENU.find((entry) => entry.id === id);
+  addToCart(item, 'Regular', 0, ['Tapioca pearls']);
+}
+
+function addToCart(item, size, priceMod, toppings) {
+  cart.push({ id: Date.now() + Math.random(), item, size, toppings, qty: 1, price: item.price + priceMod });
+  updateCartUI();
+}
+
+function cartTotal() {
+  return cart.reduce((sum, entry) => sum + entry.price * entry.qty, 0);
+}
+
+function updateCartUI() {
+  const total = cartTotal();
+  const count = cart.reduce((sum, entry) => sum + entry.qty, 0);
+  document.getElementById('cart-count-badge').textContent = count;
+  document.getElementById('cart-total-strip').textContent = `$${total.toFixed(2)}`;
+  document.getElementById('cart-topbtn').style.display = count > 0 ? 'flex' : 'none';
+  document.getElementById('cart-bar').classList.toggle('visible', count > 0);
+}
+
+function goCart() {
+  renderCart();
+  goScreen('cart-screen');
+}
+
+function renderCart() {
+  const list = document.getElementById('cart-items-list');
+  const summary = document.getElementById('cart-summary-box');
+  if (cart.length === 0) {
+    list.innerHTML = '<p style="text-align:center;padding:40px;color:var(--muted)">Your cart is empty</p>';
+    summary.innerHTML = '';
+    return;
+  }
+  list.innerHTML = cart.map((entry) => `<div class="cart-item">
+    <img class="cart-item-photo" src="${PHOTOS[entry.item.id]}" alt="${entry.item.name}">
+    <div class="cart-item-info">
+      <div class="cart-item-name">${entry.item.name}</div>
+      <div class="cart-item-mods">${entry.size} · ${entry.toppings.join(', ')}</div>
+      <div class="qty-ctrl">
+        <button class="qty-btn" onclick="changeQty(${entry.id},-1)">−</button>
+        <span class="qty-num">${entry.qty}</span>
+        <button class="qty-btn" onclick="changeQty(${entry.id},1)">+</button>
+      </div>
+    </div>
+    <span class="cart-item-price">$${(entry.price * entry.qty).toFixed(2)}</span>
+  </div>`).join('');
+  const sub = cartTotal();
+  const tax = sub * 0.08;
+  summary.innerHTML = `<div class="summary-row"><span>Subtotal</span><span>$${sub.toFixed(2)}</span></div>
+    <div class="summary-row"><span>Tax (8%)</span><span>$${tax.toFixed(2)}</span></div>
+    <div class="summary-row total"><span>Total</span><span>$${(sub + tax).toFixed(2)}</span></div>`;
+}
+
+function changeQty(id, delta) {
+  const index = cart.findIndex((entry) => entry.id == id);
+  if (index < 0) return;
+  cart[index].qty += delta;
+  if (cart[index].qty <= 0) cart.splice(index, 1);
+  updateCartUI();
+  renderCart();
+}
+
+function goCheckout() {
+  if (cart.length === 0) return;
+  renderCheckoutReview();
+  goScreen('checkout-screen');
+}
+
+function renderCheckoutReview() {
+  document.getElementById('checkout-review').innerHTML = cart.map((entry) => `<div class="order-review-item">
+    <span>${entry.qty}× ${entry.item.name} <span style="color:var(--muted);font-size:11px">(${entry.size})</span></span>
+    <span style="color:var(--brown)">$${(entry.price * entry.qty).toFixed(2)}</span>
+  </div>`).join('') + `<div class="order-review-item" style="font-weight:500;color:var(--dark)">
+    <span>Total</span><span>$${(cartTotal() * 1.08).toFixed(2)}</span>
+  </div>`;
+}
+
+function pickOpt(el, grp) {
+  el.closest(grp === 'sweet' ? '.sweetness-grid' : '.ice-grid').querySelectorAll('.option-btn').forEach((button) => button.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function placeOrder() {
+  const nameInput = document.getElementById('cust-name');
+  const name = nameInput.value.trim();
+  if (!name) {
+    nameInput.focus();
+    nameInput.style.borderColor = '#D070A0';
+    return;
+  }
+  const num = `#${Math.floor(1000 + Math.random() * 9000)}`;
+  const sweet = (document.querySelector('.sweetness-grid .selected') || {}).textContent || '50%';
+  const ice = (document.querySelector('.ice-grid .selected') || {}).textContent || 'Regular';
+  const sub = cartTotal();
+  const tax = sub * 0.08;
+  document.getElementById('conf-order-num').textContent = num;
+  document.getElementById('conf-breakdown').innerHTML = `<div class="ob-title">Order breakdown</div>`
+    + cart.map((entry) => `<div class="ob-row"><span>${entry.qty}× ${entry.item.name}</span><span>$${(entry.price * entry.qty).toFixed(2)}</span></div>`).join('')
+    + `<div class="ob-row"><span>Sweetness / Ice</span><span>${sweet} / ${ice}</span></div>
+      <div class="ob-row"><span>Tax</span><span>$${tax.toFixed(2)}</span></div>
+      <div class="ob-row total-row"><span>Total paid</span><span>$${(sub + tax).toFixed(2)}</span></div>`;
+  goScreen('confirm-screen');
+}
+
+function newOrder() {
+  cart = [];
+  updateCartUI();
+  goScreen('menu-screen');
 }
 
 function goScreen(id) {
@@ -66,369 +212,4 @@ function goScreen(id) {
   window.scrollTo(0, 0);
 }
 
-function openModal(id) {
-  modalItem = MENU.find((item) => item.id === Number(id));
-  if (!modalItem) return;
-  document.getElementById('modal-title').textContent = modalItem.name;
-  document.getElementById('modal-desc').textContent = `${modalItem.desc} · ${money(modalItem.price)}`;
-  document.querySelectorAll('#modal-sizes .modal-opt').forEach((button, index) => button.classList.toggle('sel', index === 0));
-  document.querySelectorAll('#modal-toppings .modal-opt').forEach((button, index) => button.classList.toggle('sel', index === 0));
-  document.getElementById('modal-bg').classList.add('open');
-}
-
-function closeModal() {
-  document.getElementById('modal-bg').classList.remove('open');
-  modalItem = null;
-}
-
-function addToCart(item, size, priceMod, toppings) {
-  cart.push({
-    id: String(Date.now() + Math.random()),
-    item,
-    name: item.name,
-    size,
-    toppings,
-    qty: 1,
-    price: item.price + priceMod
-  });
-  updateCartUI();
-}
-
-function quickAdd(id) {
-  const item = MENU.find((entry) => entry.id === Number(id));
-  if (item) addToCart(item, 'Regular', 0, ['Tapioca pearls']);
-}
-
-function cartSubtotal() {
-  return cart.reduce((sum, entry) => sum + entry.price * entry.qty, 0);
-}
-
-function updateCartUI() {
-  const count = cart.reduce((sum, entry) => sum + entry.qty, 0);
-  const total = cartSubtotal() * 1.08;
-  document.getElementById('cart-count-badge').textContent = count;
-  document.getElementById('cart-total-strip').textContent = money(total);
-  document.getElementById('cart-topbtn').hidden = count === 0;
-  document.getElementById('cart-bar').classList.toggle('visible', count > 0);
-}
-
-function renderCart() {
-  const list = document.getElementById('cart-items-list');
-  const summary = document.getElementById('cart-summary-box');
-  if (cart.length === 0) {
-    list.innerHTML = '<p class="empty-state">Your cart is empty.</p>';
-    summary.innerHTML = '';
-    return;
-  }
-  list.innerHTML = cart.map((entry) => `
-    <article class="cart-item">
-      <div>${cupSVG(entry.item, 42, 58)}</div>
-      <div>
-        <div class="cart-item-name">${entry.name}</div>
-        <div class="cart-item-mods">${entry.size} · ${entry.toppings.join(', ') || 'No toppings'}</div>
-        <div class="qty-ctrl">
-          <button class="qty-btn" type="button" data-qty="${entry.id}" data-delta="-1">-</button>
-          <span>${entry.qty}</span>
-          <button class="qty-btn" type="button" data-qty="${entry.id}" data-delta="1">+</button>
-        </div>
-      </div>
-      <span class="cart-item-price">${money(entry.price * entry.qty)}</span>
-    </article>`).join('');
-  const sub = cartSubtotal();
-  const tax = sub * 0.08;
-  summary.innerHTML = `
-    <div class="summary-row"><span>Subtotal</span><span>${money(sub)}</span></div>
-    <div class="summary-row"><span>Estimated tax</span><span>${money(tax)}</span></div>
-    <div class="summary-row total"><span>Total estimate</span><span>${money(sub + tax)}</span></div>`;
-}
-
-function changeQty(id, delta) {
-  const index = cart.findIndex((entry) => entry.id === id);
-  if (index < 0) return;
-  cart[index].qty += Number(delta);
-  if (cart[index].qty <= 0) cart.splice(index, 1);
-  updateCartUI();
-  renderCart();
-}
-
-function renderCheckoutReview() {
-  const sub = cartSubtotal();
-  const tax = sub * 0.08;
-  document.getElementById('checkout-review').innerHTML = cart.map((entry) => `
-    <div class="review-row">
-      <span>${entry.qty}x ${entry.name} <small>(${entry.size})</small></span>
-      <strong>${money(entry.price * entry.qty)}</strong>
-    </div>`).join('') + `
-    <div class="review-row total"><span>Total estimate</span><strong>${money(sub + tax)}</strong></div>`;
-}
-
-function selectedText(selector, fallback) {
-  return document.querySelector(`${selector} .selected`)?.textContent.trim() || fallback;
-}
-
-async function placeOrder() {
-  const error = document.getElementById('checkout-error');
-  const button = document.getElementById('place-order-btn');
-  const name = document.getElementById('cust-name').value.trim();
-  if (!name) {
-    error.textContent = 'Please enter a name for the order.';
-    document.getElementById('cust-name').focus();
-    return;
-  }
-
-  const sub = cartSubtotal();
-  const payload = {
-    customer: {
-      name,
-      phone: document.getElementById('cust-phone').value.trim(),
-      table: document.getElementById('cust-table').value.trim()
-    },
-    notes: document.getElementById('order-notes').value.trim(),
-    preferences: {
-      sweetness: selectedText('#sweet-grid', '50%'),
-      ice: selectedText('#ice-grid', 'Regular')
-    },
-    items: cart.map((entry) => ({
-      name: entry.name,
-      size: entry.size,
-      toppings: entry.toppings,
-      qty: entry.qty,
-      price: entry.price
-    })),
-    subtotal: sub,
-    tax: sub * 0.08,
-    total: sub * 1.08
-  };
-
-  button.disabled = true;
-  button.textContent = 'Sending...';
-  error.textContent = '';
-
-  try {
-    const res = await fetch('/api/orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Could not send order.');
-    showConfirmation(data.order);
-  } catch (err) {
-    error.textContent = err.message;
-  } finally {
-    button.disabled = false;
-    button.textContent = 'Send order to counter';
-  }
-}
-
-function showConfirmation(order) {
-  currentOrder = order;
-  document.getElementById('conf-order-num').textContent = order.number;
-  renderPaymentState(order);
-  document.getElementById('conf-breakdown').innerHTML = `
-    ${order.items.map((entry) => `
-      <div class="review-row">
-        <span>${entry.qty}x ${entry.name}</span>
-        <strong>${money(entry.price * entry.qty)}</strong>
-      </div>`).join('')}
-    <div class="review-row"><span>Sweetness / Ice</span><strong>${order.preferences.sweetness} / ${order.preferences.ice}</strong></div>
-    <div class="review-row total"><span>Total estimate</span><strong>${money(order.total)}</strong></div>`;
-  cart = [];
-  updateCartUI();
-  goScreen('confirm-screen');
-}
-
-function paymentLabel(status) {
-  if (status === 'paid') return 'Paid online';
-  if (status === 'pending') return 'Payment pending';
-  return 'Payment due';
-}
-
-function renderPaymentState(order, message) {
-  const status = order.payment?.status || 'unpaid';
-  const payButton = document.getElementById('pay-now-btn');
-  const statusEl = document.getElementById('payment-status');
-  const messageEl = document.getElementById('payment-message');
-  const errorEl = document.getElementById('payment-error');
-
-  statusEl.textContent = paymentLabel(status);
-  statusEl.classList.toggle('paid', status === 'paid');
-  errorEl.textContent = '';
-
-  if (status === 'paid') {
-    payButton.hidden = true;
-    messageEl.textContent = message || 'Payment received. Please show your order number at pickup.';
-    return;
-  }
-
-  payButton.hidden = !appConfig.paymentEnabled;
-  messageEl.textContent = message || (appConfig.paymentEnabled
-    ? 'Pay online now, or pay at the counter when you pick up.'
-    : 'Online payment is not configured yet. Please pay at the counter when you pick up.');
-}
-
-async function payForCurrentOrder() {
-  if (!currentOrder) return;
-  const button = document.getElementById('pay-now-btn');
-  const error = document.getElementById('payment-error');
-  button.disabled = true;
-  button.textContent = 'Opening payment...';
-  error.textContent = '';
-
-  try {
-    const res = await fetch(`/api/orders/${currentOrder.id}/checkout`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Could not start payment.');
-    if (data.paid) {
-      showConfirmation(data.order);
-      return;
-    }
-    window.location.href = data.checkoutUrl;
-  } catch (err) {
-    error.textContent = err.message;
-    button.disabled = false;
-    button.textContent = 'Pay now';
-  }
-}
-
-async function loadReturnedOrder() {
-  const params = new URLSearchParams(window.location.search);
-  const orderId = params.get('order');
-  const payment = params.get('payment');
-  if (!orderId || !payment) return;
-
-  try {
-    const res = await fetch(`/api/orders/${orderId}`);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Order not found.');
-    showConfirmation(data.order);
-    renderPaymentState(
-      data.order,
-      payment === 'success'
-        ? 'Thanks. Payment may take a moment to update on the order screen.'
-        : 'Payment was cancelled. You can try again or pay at the counter.'
-    );
-    window.history.replaceState({}, '', '/');
-  } catch {
-    goScreen('menu-screen');
-  }
-}
-
-async function loadConfig() {
-  try {
-    const res = await fetch('/api/config');
-    appConfig = await res.json();
-  } catch {
-    appConfig = { paymentEnabled: false };
-  }
-}
-
-document.addEventListener('click', (event) => {
-  const filter = event.target.closest('[data-filter]');
-  if (filter) {
-    document.querySelectorAll('.pill').forEach((button) => button.classList.remove('active'));
-    filter.classList.add('active');
-    renderMenu(filter.dataset.filter);
-    return;
-  }
-
-  const card = event.target.closest('[data-open]');
-  const quick = event.target.closest('[data-quick]');
-  if (quick) {
-    quickAdd(quick.dataset.quick);
-    return;
-  }
-  if (card) {
-    openModal(card.dataset.open);
-    return;
-  }
-
-  const screenButton = event.target.closest('[data-screen]');
-  if (screenButton) {
-    goScreen(screenButton.dataset.screen);
-    return;
-  }
-
-  const qty = event.target.closest('[data-qty]');
-  if (qty) {
-    changeQty(qty.dataset.qty, qty.dataset.delta);
-    return;
-  }
-
-  if (event.target.closest('#cart-topbtn') || event.target.closest('#view-order-btn')) {
-    renderCart();
-    goScreen('cart-screen');
-    return;
-  }
-
-  if (event.target.closest('#continue-checkout')) {
-    if (cart.length > 0) {
-      renderCheckoutReview();
-      goScreen('checkout-screen');
-    }
-    return;
-  }
-
-  const option = event.target.closest('.option-btn');
-  if (option) {
-    option.parentElement.querySelectorAll('.option-btn').forEach((button) => button.classList.remove('selected'));
-    option.classList.add('selected');
-    return;
-  }
-
-  const modalOption = event.target.closest('#modal-sizes .modal-opt');
-  if (modalOption) {
-    document.querySelectorAll('#modal-sizes .modal-opt').forEach((button) => button.classList.remove('sel'));
-    modalOption.classList.add('sel');
-    return;
-  }
-
-  const topping = event.target.closest('#modal-toppings .modal-opt');
-  if (topping) {
-    const selected = [...document.querySelectorAll('#modal-toppings .modal-opt.sel')];
-    if (topping.classList.contains('sel')) {
-      topping.classList.remove('sel');
-    } else if (selected.length < 2) {
-      topping.classList.add('sel');
-    }
-    return;
-  }
-
-  if (event.target.closest('#modal-add-btn')) {
-    if (!modalItem) return;
-    const sizeLabel = document.querySelector('#modal-sizes .sel')?.textContent.trim() || 'Regular · $0';
-    const priceMod = sizeLabel.includes('+$1') ? 1 : 0;
-    const toppings = [...document.querySelectorAll('#modal-toppings .sel')].map((button) => button.textContent.trim());
-    addToCart(modalItem, sizeLabel.split('·')[0].trim(), priceMod, toppings);
-    closeModal();
-    return;
-  }
-
-  if (event.target.id === 'modal-bg') {
-    closeModal();
-    return;
-  }
-
-  if (event.target.closest('#place-order-btn')) {
-    placeOrder();
-    return;
-  }
-
-  if (event.target.closest('#pay-now-btn')) {
-    payForCurrentOrder();
-    return;
-  }
-
-  if (event.target.closest('#new-order-btn')) {
-    goScreen('menu-screen');
-  }
-});
-
-loadConfig().then(() => {
-  renderMenu();
-  loadReturnedOrder();
-});
+renderMenu();

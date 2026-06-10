@@ -4,154 +4,144 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Boba Garden - Order</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <main id="menu-screen" class="screen active">
-    <header class="topbar">
-      <span class="brand">Boba Garden</span>
-      <button class="cart-btn" id="cart-topbtn" type="button" hidden>
+  <div id="menu-screen" class="screen active">
+    <div class="topbar">
+      <span class="topbar-logo">Boba Garden</span>
+      <button class="cart-btn" onclick="goCart()" id="cart-topbtn" style="display:none">
         Cart <span class="cart-count" id="cart-count-badge">0</span>
       </button>
-    </header>
-
-    <section class="hero">
-      <p class="hero-eyebrow">Fresh to order</p>
-      <h1>Sip something <em>wonderful</em></h1>
-      <p>Customize sweetness, ice, size, and toppings. Pay at the counter when you pick up.</p>
-    </section>
-
-    <nav class="filter-bar" aria-label="Menu filters">
-      <button class="pill active" type="button" data-filter="All">All</button>
-      <button class="pill" type="button" data-filter="Milk Tea">Milk Teas</button>
-      <button class="pill" type="button" data-filter="Fruit Tea">Fruit Teas</button>
-      <button class="pill" type="button" data-filter="Slushie">Slushies</button>
-      <button class="pill" type="button" data-filter="Seasonal">Seasonal</button>
-    </nav>
-
-    <section class="menu-body" id="menu-body"></section>
-
-    <div class="cart-bar" id="cart-bar">
-      <button class="checkout-strip" id="view-order-btn" type="button">
-        <span>View order</span>
-        <span id="cart-total-strip">$0.00</span>
-      </button>
     </div>
-  </main>
+    <div class="hero">
+      <p class="hero-eyebrow">Fresh to order</p>
+      <h1 class="hero-title">Sip something <em>wonderful</em></h1>
+      <p class="hero-sub">Customise sweetness & ice · Vegan options · Made in minutes</p>
+    </div>
+    <div class="filter-bar">
+      <button class="pill active" onclick="filterMenu(this,'All')">All</button>
+      <button class="pill" onclick="filterMenu(this,'Tea')">Teas</button>
+      <button class="pill" onclick="filterMenu(this,'Latte')">Lattes</button>
+      <button class="pill" onclick="filterMenu(this,'Lemonade')">Lemonade</button>
+      <button class="pill" onclick="filterMenu(this,'Fruit Tea')">Fruit Tea</button>
+    </div>
+    <div class="menu-body" id="menu-body"></div>
+    <div class="cart-bar" id="cart-bar">
+      <div class="checkout-strip" onclick="goCart()">
+        <span>View my order</span>
+        <span class="total" id="cart-total-strip">$0.00</span>
+      </div>
+    </div>
+  </div>
 
-  <main id="cart-screen" class="screen">
-    <header class="topbar">
-      <button class="back-btn" type="button" data-screen="menu-screen">Back</button>
-      <span class="brand">My Order</span>
+  <div id="cart-screen" class="screen">
+    <div class="topbar">
+      <button class="back-btn" onclick="goScreen('menu-screen')">Menu</button>
+      <span class="topbar-logo">My Order</span>
       <span></span>
-    </header>
-    <section class="cart-items" id="cart-items-list"></section>
-    <section class="summary-box" id="cart-summary-box"></section>
-    <button class="big-btn" id="continue-checkout" type="button">Continue</button>
-  </main>
+    </div>
+    <div id="cart-items-list" class="cart-items"></div>
+    <div class="cart-summary" id="cart-summary-box"></div>
+    <div class="notes-area" style="margin-top:14px">
+      <label for="order-notes">Special requests (optional)</label>
+      <textarea id="order-notes" rows="3" placeholder="e.g. no straws, extra ice..."></textarea>
+    </div>
+    <button class="big-btn" onclick="goCheckout()">Continue to checkout</button>
+  </div>
 
-  <main id="checkout-screen" class="screen">
-    <header class="topbar">
-      <button class="back-btn" type="button" data-screen="cart-screen">Back</button>
-      <span class="brand">Checkout</span>
+  <div id="checkout-screen" class="screen">
+    <div class="topbar">
+      <button class="back-btn" onclick="goScreen('cart-screen')">Order</button>
+      <span class="topbar-logo">Checkout</span>
       <span></span>
-    </header>
-    <section class="checkout-body">
-      <h2>Your details</h2>
-      <label class="field">
-        <span>Name</span>
-        <input id="cust-name" type="text" autocomplete="name" placeholder="Name for the order">
-      </label>
+    </div>
+    <div class="checkout-body">
+      <div class="section-sub">Your details</div>
+      <div class="form-group">
+        <label class="form-label">Name</label>
+        <input class="form-input" id="cust-name" type="text" placeholder="Your name for the order">
+      </div>
       <div class="form-row">
-        <label class="field">
-          <span>Phone optional</span>
-          <input id="cust-phone" type="tel" autocomplete="tel" placeholder="555-0100">
-        </label>
-        <label class="field">
-          <span>Table or pickup note</span>
-          <input id="cust-table" type="text" placeholder="Table 3 or pickup">
-        </label>
+        <div class="form-group">
+          <label class="form-label">Phone (optional)</label>
+          <input class="form-input" id="cust-phone" type="tel" placeholder="555-0100">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Table / pickup note</label>
+          <input class="form-input" id="cust-table" type="text" placeholder="Table 3, or pickup">
+        </div>
       </div>
-      <label class="field">
-        <span>Special requests optional</span>
-        <textarea id="order-notes" rows="3" placeholder="No straw, extra pearls, allergy notes"></textarea>
-      </label>
-
-      <h2>Sweetness</h2>
-      <div class="choice-grid four" id="sweet-grid">
-        <button class="option-btn" type="button">0%</button>
-        <button class="option-btn selected" type="button">50%</button>
-        <button class="option-btn" type="button">75%</button>
-        <button class="option-btn" type="button">100%</button>
+      <div class="divider"></div>
+      <div class="section-sub">Sweetness</div>
+      <div class="sweetness-grid">
+        <button class="option-btn" onclick="pickOpt(this,'sweet')">0%</button>
+        <button class="option-btn selected" onclick="pickOpt(this,'sweet')">50%</button>
+        <button class="option-btn" onclick="pickOpt(this,'sweet')">75%</button>
+        <button class="option-btn" onclick="pickOpt(this,'sweet')">100%</button>
       </div>
-
-      <h2>Ice level</h2>
-      <div class="choice-grid three" id="ice-grid">
-        <button class="option-btn" type="button">No ice</button>
-        <button class="option-btn selected" type="button">Regular</button>
-        <button class="option-btn" type="button">Extra ice</button>
+      <div class="section-sub">Ice level</div>
+      <div class="ice-grid">
+        <button class="option-btn" onclick="pickOpt(this,'ice')">No ice</button>
+        <button class="option-btn selected" onclick="pickOpt(this,'ice')">Regular</button>
+        <button class="option-btn" onclick="pickOpt(this,'ice')">Extra ice</button>
       </div>
+      <div class="divider"></div>
+      <div class="section-sub">Order summary</div>
+      <div class="order-review" id="checkout-review"></div>
+      <button class="big-btn" onclick="placeOrder()">Place order</button>
+    </div>
+  </div>
 
-      <h2>Order summary</h2>
-      <section class="review-box" id="checkout-review"></section>
-      <p class="counter-note">No online payment. Please pay at the counter when your order is ready.</p>
-      <button class="big-btn" id="place-order-btn" type="button">Send order to counter</button>
-      <p class="form-error" id="checkout-error"></p>
-    </section>
-  </main>
-
-  <main id="confirm-screen" class="screen">
-    <section class="confirm-body">
-      <div class="checkmark">OK</div>
-      <h2>Order sent!</h2>
-      <p>Your boba order went to the counter. Pay when you pick it up.</p>
-      <div class="order-number">
-        <span>Order number</span>
-        <strong id="conf-order-num">B0000</strong>
+  <div id="confirm-screen" class="screen">
+    <div class="confirm-body">
+      <div class="checkmark-circle">✓</div>
+      <h2 class="confirm-title">Order placed!</h2>
+      <p class="confirm-sub">Your drink is being made with love.<br>We'll have it ready soon.</p>
+      <div class="order-num">
+        <div class="order-num-label">Order number</div>
+        <div class="order-num-val" id="conf-order-num">#0000</div>
       </div>
-      <section class="eta-card">
-        <span>Estimated wait</span>
-        <strong>8 - 12 minutes</strong>
-      </section>
-      <section class="payment-box" id="payment-box">
-        <span class="payment-pill" id="payment-status">Payment due</span>
-        <p id="payment-message">Pay online now, or pay at the counter when you pick up.</p>
-        <button class="big-btn pay-btn" id="pay-now-btn" type="button">Pay now</button>
-        <p class="form-error" id="payment-error"></p>
-      </section>
-      <section class="review-box" id="conf-breakdown"></section>
-      <button class="outline-btn" id="new-order-btn" type="button">Start a new order</button>
-    </section>
-  </main>
+      <div class="eta-card">
+        <span class="eta-icon">⏱</span>
+        <div class="eta-text">
+          <div class="eta-label">Estimated wait</div>
+          <div class="eta-val">5 - 8 minutes</div>
+        </div>
+      </div>
+      <div class="order-breakdown" id="conf-breakdown"></div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:20px">Show this screen or your order number at the counter.</p>
+      <button class="new-order-btn" onclick="newOrder()">Start a new order</button>
+    </div>
+  </div>
 
-  <div class="modal-bg" id="modal-bg">
-    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal-bg" id="modal-bg" onclick="closeModalBg(event)">
+    <div class="modal">
       <div class="modal-handle"></div>
-      <h2 id="modal-title"></h2>
-      <p id="modal-desc"></p>
+      <img class="modal-photo" id="modal-photo" src="" alt="">
+      <h3 class="modal-title" id="modal-title"></h3>
+      <p class="modal-desc" id="modal-desc"></p>
       <div class="modal-section">
-        <h3>Size</h3>
+        <div class="modal-section-label">Size</div>
         <div class="modal-opts" id="modal-sizes">
-          <button class="modal-opt sel" type="button">Regular · $0</button>
-          <button class="modal-opt" type="button">Large · +$1</button>
+          <button class="modal-opt sel" onclick="pickModalOpt(this)">Regular · $0</button>
+          <button class="modal-opt" onclick="pickModalOpt(this)">Large · +$1</button>
         </div>
       </div>
       <div class="modal-section">
-        <h3>Toppings up to 2</h3>
+        <div class="modal-section-label">Toppings (up to 2)</div>
         <div class="modal-opts" id="modal-toppings">
-          <button class="modal-opt sel" type="button">Tapioca pearls</button>
-          <button class="modal-opt" type="button">Popping boba</button>
-          <button class="modal-opt" type="button">Lychee jelly</button>
-          <button class="modal-opt" type="button">Coconut jelly</button>
-          <button class="modal-opt" type="button">Pudding</button>
-          <button class="modal-opt" type="button">Basil seeds</button>
+          <button class="modal-opt sel" onclick="pickModalTop(this)">Tapioca pearls</button>
+          <button class="modal-opt" onclick="pickModalTop(this)">Popping boba</button>
+          <button class="modal-opt" onclick="pickModalTop(this)">Lychee jelly</button>
+          <button class="modal-opt" onclick="pickModalTop(this)">Coconut jelly</button>
+          <button class="modal-opt" onclick="pickModalTop(this)">Pudding</button>
+          <button class="modal-opt" onclick="pickModalTop(this)">Basil seeds</button>
         </div>
       </div>
-      <button class="modal-add-btn" id="modal-add-btn" type="button">Add to order</button>
-    </section>
+      <button class="modal-add-btn" onclick="addFromModal()">Add to order</button>
+    </div>
   </div>
 
   <script src="/app.js"></script>
