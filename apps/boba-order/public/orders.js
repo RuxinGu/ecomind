@@ -80,6 +80,19 @@ async function loadOrders() {
   renderOrders(data.orders || []);
 }
 
+async function loadConfig() {
+  try {
+    const res = await fetch('/api/config');
+    const config = await res.json();
+    const qrLink = document.getElementById('owner-qr-link');
+    const customerLink = document.getElementById('owner-customer-link');
+    if (qrLink && config.qrUrl) qrLink.href = config.qrUrl;
+    if (customerLink && config.orderUrl) customerLink.href = config.orderUrl;
+  } catch (error) {
+    console.warn('Unable to load public links.', error);
+  }
+}
+
 async function markComplete(id) {
   await fetch(`/api/orders/${id}`, {
     method: 'PATCH',
@@ -94,5 +107,6 @@ document.addEventListener('click', (event) => {
   if (button) markComplete(button.dataset.complete);
 });
 
+loadConfig();
 loadOrders();
 setInterval(loadOrders, 4000);

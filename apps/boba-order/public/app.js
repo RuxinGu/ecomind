@@ -178,7 +178,18 @@ function pickOpt(el, grp) {
   el.classList.add('selected');
 }
 
-function placeOrder() {
+function renderConfirmation(order) {
+  const items = order.items || [];
+  const preferences = order.preferences || {};
+  document.getElementById('conf-order-num').textContent = order.number || '#0000';
+  document.getElementById('conf-breakdown').innerHTML = `<div class="ob-title">Order breakdown</div>`
+    + items.map((entry) => `<div class="ob-row"><span>${entry.qty}× ${entry.name}</span><span>$${(entry.price * entry.qty).toFixed(2)}</span></div>`).join('')
+    + `<div class="ob-row"><span>Sweetness / Ice</span><span>${preferences.sweetness || '50%'} / ${preferences.ice || 'Regular'}</span></div>
+      <div class="ob-row"><span>Tax</span><span>$${Number(order.tax || 0).toFixed(2)}</span></div>
+      <div class="ob-row total-row"><span>Total paid</span><span>$${Number(order.total || 0).toFixed(2)}</span></div>`;
+}
+
+async function placeOrder() {
   const nameInput = document.getElementById('cust-name');
   const name = nameInput.value.trim();
   if (!name) {
@@ -186,17 +197,45 @@ function placeOrder() {
     nameInput.style.borderColor = '#D070A0';
     return;
   }
-  const num = `#${Math.floor(1000 + Math.random() * 9000)}`;
   const sweet = (document.querySelector('.sweetness-grid .selected') || {}).textContent || '50%';
   const ice = (document.querySelector('.ice-grid .selected') || {}).textContent || 'Regular';
   const sub = cartTotal();
   const tax = sub * 0.08;
-  document.getElementById('conf-order-num').textContent = num;
-  document.getElementById('conf-breakdown').innerHTML = `<div class="ob-title">Order breakdown</div>`
-    + cart.map((entry) => `<div class="ob-row"><span>${entry.qty}× ${entry.item.name}</span><span>$${(entry.price * entry.qty).toFixed(2)}</span></div>`).join('')
-    + `<div class="ob-row"><span>Sweetness / Ice</span><span>${sweet} / ${ice}</span></div>
-      <div class="ob-row"><span>Tax</span><span>$${tax.toFixed(2)}</span></div>
-      <div class="ob-row total-row"><span>Total paid</span><span>$${(sub + tax).toFixed(2)}</span></div>`;
+
+  const payload = {
+    customer: {
+      name,
+      phone: document.getElementById('cust-phone').value.trim(),
+      table: document.getElementById('cust-table').value.trim()
+    },
+    notes: document.getElementById('order-notes').value.trim(),
+    preferences: { sweetness: sweet, ice },
+    items: cart.map((entry) => ({
+      name: entry.item.name,
+      size: entry.size,
+      toppings: entry.toppings,
+      qty: entry.qty,
+      price: entry.price
+    })),
+    subtotal: sub,
+    tax,
+    total: sub + tax
+  };
+
+  try {
+    const res = await fetch('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not place order.');
+    renderConfirmation(data.order);
+  } catch (error) {
+    alert(error.message || 'Could not place order.');
+    return;
+  }
+
   goScreen('confirm-screen');
 }
 
